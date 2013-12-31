@@ -210,3 +210,48 @@ memcpy(answer, &block, sizeof(*answer));
 
 return answer;
 }
+
+/*
+	USB_WEATHER::READ_ALL_READINGS()
+	--------------------------------
+*/
+usb_weather_reading **usb_weather::read_all_readings(uint32_t *readings)
+{
+usb_weather_fixed_block_1080 *block;
+usb_weather_reading **history;
+uint16_t address;
+uint32_t current;
+
+/*
+	Get the "fixed block" which also contains the base address of the current reading
+	and the number of historic readings held in the base unit
+*/
+if ((block = read_fixed_block()) == NULL)
+	return NULL;	// Cannot read from base station
+
+/*
+	Get the base address of the first reading
+*/
+address = (block->current_position - 0x100) - ((block->data_count - 1) * 16);
+address += 0x100;
+
+/*
+	Allocate space
+*/
+history = new usb_weather_reading *[block->data_count];
+
+/*
+	Download each reading
+*/
+for (current = 0; current < block->data_count; current++)
+	{
+	history[current] = read_reading(address);
+	if ((address += 16)  < 0x100)
+		address = 0x100;			// wrap around to 0x100
+	}
+
+delete block;
+*readings = block->data_count;
+return history;
+}
+
