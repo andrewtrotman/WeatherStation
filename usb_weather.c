@@ -6,6 +6,7 @@
 */
 #include "usb_weather.h"
 #include "usb_weather_message.h"
+#include "usb_weather_reading_raw.h"
 
 extern "C"
 {
@@ -21,6 +22,7 @@ extern "C"
 usb_weather::usb_weather()
 {
 hDevice = INVALID_HANDLE_VALUE;
+fixed_block = NULL;
 }
 
 /*
@@ -31,6 +33,7 @@ usb_weather::~usb_weather()
 {
 if (hDevice != INVALID_HANDLE_VALUE)
 	CloseHandle(hDevice);
+delete fixed_block;
 }
 
 /*
@@ -92,10 +95,12 @@ for (current = 0; SetupDiEnumDeviceInterfaces(hDevInfo, 0, &guid, current, &devI
 			HidD_GetAttributes(hDevice, &attributes);
 			if (attributes.VendorID == vid && attributes.ProductID == pid)
 				{
-				found = true;
 				HidD_FlushQueue(hDevice);
-
-				break;
+				if (read_fixed_block() != NULL)
+					{
+					found = true;
+					break;
+					}
 				}
 			CloseHandle(hDevice);
 			}
@@ -133,7 +138,6 @@ usb_weather_message message;
 DWORD dwBytes = 0, dwBytesToRead;
 long long remaining;
 
-
 message.zero = 0;
 message.report_id = message.aux_report_id = 0xa1;
 message.address_high = message.aux_address_high = (address >> 8) & 0xFF;
@@ -164,7 +168,7 @@ if (HidD_SetOutputReport(hDevice, &message, sizeof(message)))
 	return bytes;		// success
 	}
 
-return 0;
+return 0;		// failure
 }
 
 /*
@@ -174,14 +178,34 @@ return 0;
 usb_weather_reading *usb_weather::read_reading(uint16_t address)
 {
 usb_weather_reading *answer;
-uint8_t buffer[sizeof(usb_weather_reading)];
+usb_weather_reading_raw buffer;
 
-if (read(address, buffer) == 0)
+/*
+	Get the data
+*/
+if (read(address, (uint8_t*)&buffer) == 0)
 	return NULL;
 
+/*
+	Convert it into human usable units
+*/
 answer = new usb_weather_reading;
-memcpy(answer, buffer, sizeof(buffer));
+answer->delay = buffer.delay;
+answer->indoor_humidity = buffer.indoor_humidity;
+answer->indoor_temperature = buffer.indoor_temperature / 10.0;
+answer->outdoor_humidity = buffer.outdoor_humidity;
+answer->outdoor_temperature = buffer.outdoor_temperature / 10.0;
+answer->absolute_pressure = buffer.absolute_pressure / 10.0;
+answer->average_windspeed = (buffer.average_windspeed_low | (buffer.windspeed_high & 0x0F)) / 10.0;
+answer->gust_windspeed = (buffer.gust_windspeed_low | ((buffer.windspeed_high >> 4) & 0x0F)) / 10.0;
+answer->wind_direction = buffer.wind_direction * 22.5;
+answer->total_rain = buffer.total_rain * 0.3;
+answer->rain_counter_overflow = buffer.status & 0x80 ? true : false;
+answer->lost_communications = buffer.status & 0x40 ? true : false;
 
+/*
+	Pass it back to the caller
+*/
 return answer;
 }
 
@@ -191,24 +215,33 @@ return answer;
 */
 usb_weather_fixed_block_1080 *usb_weather::read_fixed_block(void)
 {
-usb_weather_fixed_block_1080 block;
-usb_weather_fixed_block_1080 *answer;
 uint8_t *into;
 uint16_t address = 0;
 
-into = (uint8_t *)&block;
-while (address < sizeof(*answer))
+/*
+	If we've already read it then don't read it again
+*/
+if (fixed_block != NULL)
+	return fixed_block;
+
+/*
+	Allocate memory for it
+*/
+fixed_block = new usb_weather_fixed_block_1080;
+
+/*
+	Read into it... in 32-byte chunks
+*/
+into = (uint8_t *)fixed_block;
+while (address < sizeof(*fixed_block))
 	{
 	if (read(address, into) == 0)
 		return NULL;
-	into += sizeof(usb_weather_reading);
-	address += sizeof(usb_weather_reading);
+	into += sizeof(usb_weather_reading_raw);
+	address += sizeof(usb_weather_reading_raw);
 	}
 
-answer = new usb_weather_fixed_block_1080;
-memcpy(answer, &block, sizeof(*answer));
-
-return answer;
+return fixed_block;
 }
 
 /*
@@ -217,41 +250,59 @@ return answer;
 */
 usb_weather_reading **usb_weather::read_all_readings(uint32_t *readings)
 {
-usb_weather_fixed_block_1080 *block;
 usb_weather_reading **history;
 uint16_t address;
 uint32_t current;
 
 /*
-	Get the "fixed block" which also contains the base address of the current reading
-	and the number of historic readings held in the base unit
+	Do we have communications?
 */
-if ((block = read_fixed_block()) == NULL)
-	return NULL;	// Cannot read from base station
+if (fixed_block == NULL)
+	return NULL;
 
 /*
 	Get the base address of the first reading
 */
-address = (block->current_position - 0x100) - ((block->data_count - 1) * 16);
+address = (fixed_block->current_position - 0x100) - ((fixed_block->data_count - 1) * 16);
 address += 0x100;
 
 /*
 	Allocate space
 */
-history = new usb_weather_reading *[block->data_count];
+history = new usb_weather_reading *[fixed_block->data_count];
 
 /*
 	Download each reading
 */
-for (current = 0; current < block->data_count; current++)
+for (current = 0; current < fixed_block->data_count; current++)
 	{
 	history[current] = read_reading(address);
 	if ((address += 16)  < 0x100)
 		address = 0x100;			// wrap around to 0x100
 	}
 
-delete block;
-*readings = block->data_count;
+/*
+	Pass the results back to the caller
+*/
+*readings = fixed_block->data_count;
 return history;
+}
+
+/*
+	USB_WEATHER::READ_CURRENT_READINGS()
+	------------------------------------
+*/
+usb_weather_reading *usb_weather::read_current_readings(void)
+{
+/*
+	Make sure we have the address we need
+*/
+if (fixed_block == NULL)
+	return NULL;
+
+/*
+	Get the reading
+*/
+return read_reading(fixed_block->current_position);
 }
 
