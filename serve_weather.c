@@ -13,6 +13,7 @@
 #include "usb_weather_fixed_block_1080.h"
 #include "usb_weather_message.h"
 #include "usb_weather_reading.h"
+#include "weather_math.h"
 
 /*
 	These are the USB VID and PID of the weather station I've got
@@ -40,6 +41,13 @@ puts("google.load(\"visualization\", \"1\", {packages:[\"gauge\"]});");
 */
 void render_html_footer(usb_weather *station, usb_weather_fixed_block_1080 *fixed_block, usb_weather_reading *current, usb_weather_reading **historic)
 {
+uint8_t year, month, day, hour, minute;
+int sun_hour, sun_minute;
+double lat = -45.8667;
+double lng = 170.5000;
+int daylight_savings = 1;
+TIME_ZONE_INFORMATION timezone_information;
+
 puts("</script>");
 puts("</head>");
 puts("<body>");
@@ -48,6 +56,15 @@ printf("<b><font size=-1>");
 fixed_block->current_time.text_render();
 printf(":", current->delay);
 printf(" (%ld minutes ago)</font></b><br>", current->delay);
+
+daylight_savings = (GetTimeZoneInformation(&timezone_information) == TIME_ZONE_ID_DAYLIGHT) ? 1 : 0;
+
+fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
+weather_math::sunrise(&sun_hour, &sun_minute, year + 2000, month, day, lat, lng, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
+printf("<b><font size=-1>Sun Rise: %d:%d", sun_hour, sun_minute);
+
+weather_math::sunset(&sun_hour, &sun_minute, year + 2000, month, day, lat, lng, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
+printf(" Set: %d:%d</font></b><br>", sun_hour, sun_minute);
 
 puts("<table><tr>");
 puts("<td><div id='current_temperature'></div></td>");

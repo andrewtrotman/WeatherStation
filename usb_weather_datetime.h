@@ -25,6 +25,8 @@ public:
 
 public:
 	static void print_bcd(uint8_t bcd);
+	static uint8_t bcd_to_int(uint8_t bcd);
+	void extract(uint8_t *year, uint8_t *month, uint8_t *day, uint8_t *hour, uint8_t *minute);
 	void text_render(void);
 } ;
 #pragma pack()

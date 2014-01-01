@@ -34,8 +34,8 @@ all : read_weather.exe serve_weather.exe
 read_weather.exe : read_weather.c usb_weather_datetime.c usb_weather_reading.c usb_weather_fixed_block_1080.c usb_weather.c usb_weather_datetime.h usb_weather_reading.h usb_weather_fixed_block_1080.h usb_weather.h
 	cl /Zi /I$(DDK_INCLUDE) /Tp read_weather.c /Tp usb_weather_datetime.c /Tp usb_weather_reading.c /Tp usb_weather_fixed_block_1080.c /Tp usb_weather.c /X -I$(DDK_INCLUDE) $(DDK_LIB)
 
-serve_weather.exe : serve_weather.c usb_weather_datetime.c usb_weather_reading.c usb_weather_fixed_block_1080.c usb_weather.c usb_weather_datetime.h usb_weather_reading.h usb_weather_fixed_block_1080.h usb_weather.h
-	cl /Zi /I$(DDK_INCLUDE) /Tp serve_weather.c /Tp usb_weather_datetime.c /Tp usb_weather_reading.c /Tp usb_weather_fixed_block_1080.c /Tp usb_weather.c /X -I$(DDK_INCLUDE) $(DDK_LIB)
+serve_weather.exe : serve_weather.c usb_weather_datetime.c usb_weather_reading.c usb_weather_fixed_block_1080.c usb_weather.c weather_math.c usb_weather_datetime.h usb_weather_reading.h usb_weather_fixed_block_1080.h usb_weather.h weather_math.h
+	cl /Zi /I$(DDK_INCLUDE) /Tp serve_weather.c /Tp usb_weather_datetime.c /Tp usb_weather_reading.c /Tp usb_weather_fixed_block_1080.c /Tp usb_weather.c /Tp weather_math.c /X -I$(DDK_INCLUDE) $(DDK_LIB)
 
 clean:
 	del *.obj *.exe *.ilk *.pdb *.suo *.bak

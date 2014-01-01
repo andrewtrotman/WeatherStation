@@ -29,7 +29,7 @@ public:
 	uint8_t  alarm_enable_1;				// bit 1: time | bit 2: wind direction | bit 4: indoor humidity low | bit 5: indoor humidity high | bit 6: outdoor humidity low | bit 7: outdoor humidity high
 	uint8_t  alarm_enable_2;				// bit 0: wind average | bit 1: wind gust | bit 2: rain hourly | bit 3: rain daily | bit 4: absolute pressure low | bit 5: absolute pressure high | bit 6: relative pressure low | bit 7: relative pressure high
 	uint8_t  alarm_enable_3;				// bit 0: indoor temperature low | bit 1: indoor temperature high | bit 2: outdoor temperature low | bit 3: outdoor temperature high | bit 4: wind chill low | bit 5: wind chill high | bit 6: dew point low | bit 7: dew point high
-	int8_t   timezone;						// hours offset from Central European Time
+	int8_t   timezone;						// hours offset from Central European Time (in BCD)
 	uint8_t  reserved_2;
 	uint8_t  data_refresh;					// Computer writes 0xAA to indicate a change of settings. Weather station clears value to acknowledge.
 	uint16_t data_count;					// number of stored readings
