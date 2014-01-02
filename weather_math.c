@@ -140,6 +140,78 @@ double weather_math::cloud_temperature(double temperature_in_c, double humidity)
 return -0.00984 * cloud_base(temperature_in_c, humidity) + temperature_in_c;
 }
 
+/*
+	WEATHER_MATH::BEAUFORT()
+	------------------------
+*/
+long weather_math::beaufort(double windspeed_in_ms)
+{
+if (windspeed_in_ms < 0.3)
+	return 0;
+if (windspeed_in_ms < 1.5)
+	return 1;
+if (windspeed_in_ms < 3.4)
+	return 2;
+if (windspeed_in_ms < 5.4)
+	return 3;
+if (windspeed_in_ms < 7.9)
+	return 4;
+if (windspeed_in_ms < 10.7)
+	return 5;
+if (windspeed_in_ms < 13.8)
+	return 6;
+if (windspeed_in_ms < 17.1)
+	return 7;
+if (windspeed_in_ms < 20.7)
+	return 8;
+if (windspeed_in_ms < 24.4)
+	return 9;
+if (windspeed_in_ms < 28.4)
+	return 10;
+if (windspeed_in_ms < 32.6)
+	return 11;
+
+return 12;
+}
+
+/*
+	WEATHER_MATH::BEAUFORT_NAME()
+	-----------------------------
+*/
+char *weather_math::beaufort_name(long beaufort)
+{
+switch (beaufort)
+	{
+	case 0:
+		return "Calm";
+	case 1:
+		return "Light Air";
+	case 2:
+		return "Light Breeze";
+	case 3:
+		return "Gentle Breeze";
+	case 4:
+		return "Moderate Breeze";
+	case 5:
+		return "Fresh Breeze";
+	case 6:
+		return "Strong Breeze";
+	case 7:
+		return "Moderate Gale";
+	case 8:
+		return "Gale";
+	case 9:
+		return "Strong Gale";
+	case 10:
+		return "Storm";
+	case 11:
+		return "Voilent Storm";
+	case 12:
+		return "Hurricane";
+	default:
+		return "Unknown";
+	}
+}
 
 /*
 	WEATHER_MATH::CALCULATE_SUNRISE_SUNSET()

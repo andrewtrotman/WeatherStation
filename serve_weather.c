@@ -15,11 +15,220 @@
 #include "usb_weather_reading.h"
 #include "weather_math.h"
 
+#define MODE_IPHONE 0
+#define MODE_IPAD 1
+#define MODE_PC 2
+
+static const int mode = MODE_IPHONE;
+double lat = -45.8667;
+double lng = 170.5000;
+
 /*
 	These are the USB VID and PID of the weather station I've got
 */
 #define USB_WEATHER_VID 0x1941			// Dream Link (in my case DIGITECH)
 #define USB_WEATHER_PID 0x8021			// WH1080 Weather Station / USB Missile Launcher (in my case USB Wireless Weather Station)
+
+
+/*
+	KNOTS()
+	-------
+*/
+double knots(double m_per_second)
+{
+return m_per_second * 1.943844492457398;
+}
+
+/*
+	WIND_DIRECTION()
+	----------------
+*/
+char *wind_direction(double angle)
+{
+switch ((int)(angle / 22.5))
+	{
+	case 0:
+		return "Northerly";
+	case 1:
+		return "NNE";
+	case 2:
+		return "Northeasterly";
+	case 3:
+		return "NEE";
+	case 4:
+		return "Easterly";
+	case 5:
+		return "SEE";
+	case 6:
+		return "Southeasterly";
+	case 7:
+		return "SSE";
+	case 8:
+		return "Southerly";
+	case 9:
+		return "SSW";
+	case 10:
+		return "Southwesterly";
+	case 11:
+		return "WSW";
+	case 12:
+		return "Westerly";
+	case 13:
+		return "WNW";
+	case 14:
+		return "Northwesterly";
+	case 15:
+		return "NNW";
+	}
+return "No Wind";
+}
+
+/*
+	RENDER_CURRENT_READINGS_IPHONE()
+	--------------------------------
+*/
+usb_weather_reading *render_current_readings_iphone(usb_weather *station)
+{
+usb_weather_reading *readings;
+uint8_t year, month, day, hour, minute;
+int sun_hour, sun_minute;
+int daylight_savings;
+TIME_ZONE_INFORMATION timezone_information;
+usb_weather_fixed_block_1080 *fixed_block;
+
+readings = station->read_current_readings();
+if (readings == NULL)
+	exit(printf("Cannot read current readings\n"));
+
+fixed_block = station->read_fixed_block();
+
+puts("<html>");
+puts("<style>");
+puts("@font-face");
+puts("	{");
+puts("	font-family: 'MeteoconsRegular';");
+puts("	src: url('meteocons-webfont.eot');");
+puts("	src: url('meteocons-webfont.eot?#iefix') format('embedded-opentype'),");
+puts("		 url('meteocons-webfont.woff') format('woff'),");
+puts("		 url('meteocons-webfont.ttf') format('truetype'),");
+puts("		 url('meteocons-webfont.svg#MeteoconsRegular') format('svg');");
+puts("	font-weight: normal;");
+puts("	font-style: normal;");
+puts("	}");
+puts("body, td");
+puts("	{");
+puts("	font-family:calibri,euphemiaucas;");
+puts("	font-size:36pt;");
+puts("	}");
+puts(".medium");
+puts("	{");
+puts("	font-size:40pt;");
+puts("	}");
+puts(".huge");
+puts("	{");
+puts("	font-size:120pt;");
+puts("	}");
+puts(".megahuge");
+puts("	{");
+puts("	font-size:160pt");
+puts("	}");
+puts(".symbol");
+puts("	{");
+puts("	font-family:MeteoconsRegular;");
+puts("	}");
+puts(".arrowfont");
+puts("	{");
+puts("	font-family:times;");
+puts("	font-weight:bold;");
+puts("	}");
+puts(".space");
+puts("	{");
+puts("	line-height:40px;");
+puts("	}");
+puts(".halfspace");
+puts("	{");
+puts("	line-height:20px;");
+puts("	}");
+puts("</style>");
+
+puts("<head></head>");
+
+puts("<body>");
+puts("<table cellpadding=0 cellspacing=0 border=0 width=100%>");
+
+/*
+	Sunrise and Sunset
+*/
+puts("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td align=left><span class=\"symbol\">B</span>");
+
+daylight_savings = (GetTimeZoneInformation(&timezone_information) == TIME_ZONE_ID_DAYLIGHT) ? 1 : 0;
+fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
+weather_math::sunrise(&sun_hour, &sun_minute, year + 2000, month, day, lat, lng, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
+printf("%d:%d", sun_hour, sun_minute);
+puts("</td><td align=center><span class=\"symbol\">C</span></td><td align=right>");
+weather_math::sunset(&sun_hour, &sun_minute, year + 2000, month, day, lat, lng, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
+printf(" %d:%d", sun_hour, sun_minute);
+puts("<span class=\"symbol\">A</span></td></tr></table></td></tr>");
+
+/*
+	When the readings were taken
+*/
+puts("<tr><td align=center>");
+fixed_block->current_time.text_render();
+printf(",", readings->delay);
+printf(" %ld minute%s ago</b><br>", readings->delay, readings->delay == 1 ? "" : "s");
+puts("</td></tr>");
+
+/*
+	Wind
+*/
+printf("<tr><td align=center class=\"huge\">%s</td></tr>", wind_direction(readings->wind_direction));
+printf("<tr><td align=center class=\"medium\">%0.2fKn gusts to %0.2fKn (%s)</td></tr>", knots(readings->average_windspeed), knots(readings->gust_windspeed), weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
+puts("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
+
+/*
+	Outdoor temperature, humidity, rainfall
+*/
+puts("<tr><td align=center><center><table cellpadding=0 cellspacing=0 border=0><tr><td align=right class=\"huge\">");
+printf("%0.2f", readings->outdoor_temperature);
+puts("&deg;C&nbsp;</td><td align=left class=\"medium\">");
+printf("%0.2f", readings->outdoor_humidity);
+puts("%<br>");
+printf("%0.2f", readings->total_rain);
+puts("mm</td></tr></table></center></td></tr>");
+puts("<tr><td class=\"space\">&nbsp;</td></tr>");
+
+/*
+	Prediction
+*/
+puts("<tr><td align=center class=\"megahuge\"><span class=\"symbol\">R</span></td></tr>");
+puts("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
+
+/*
+	Pressure
+*/
+printf("<tr><td align=center class=\"medium\">%0.2fhPa <span class=\"arrowfont\">&uarr;</span></td></tr>", readings->absolute_pressure);
+printf("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
+
+/*
+	Inside temperature and humidity
+*/
+double dew_point = weather_math::dewpoint(readings->outdoor_temperature, readings->outdoor_humidity);
+double apparent_temperature = weather_math::apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
+//double apparent_temperature = weather_math::australian_apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
+
+printf("<tr><td align=center class=\"medium\">Feels like %0.0f&deg;C, Dewpoint:%0.0f&deg;C, Inside:%0.0f&deg;C %0.0f%%)</td></tr>", apparent_temperature, dew_point, readings->indoor_temperature, readings->indoor_humidity);
+puts("</table>");
+
+
+/*
+	Done
+*/
+puts("</body>");
+puts("</html>");
+
+return readings;
+}
 
 /*
 	RENDER_HTML_HEADER()
@@ -43,9 +252,7 @@ void render_html_footer(usb_weather *station, usb_weather_fixed_block_1080 *fixe
 {
 uint8_t year, month, day, hour, minute;
 int sun_hour, sun_minute;
-double lat = -45.8667;
-double lng = 170.5000;
-int daylight_savings = 1;
+int daylight_savings;
 TIME_ZONE_INFORMATION timezone_information;
 
 puts("</script>");
@@ -114,15 +321,6 @@ printf("	};\n");
 printf("var chart = new google.visualization.ScatterChart(document.getElementById('chart_div_%s'));\n", name);
 printf("chart.draw(data, options);\n");
 printf("}\n\n");
-}
-
-/*
-	KNOTS()
-	-------
-*/
-double knots(double m_per_second)
-{
-return m_per_second * 1.943844492457398;
 }
 
 /*
@@ -268,8 +466,8 @@ data = new double [readings];
 sum = 0;
 for (current = readings - 1; current >= 0; current--)
 	{
-	timeline[current] = sum;
 	sum += history[current]->delay;
+	timeline[current] = sum;
 	}
 
 for (current = readings - 1; current >= 0; current--)
@@ -289,12 +487,14 @@ render_html_graph("pressure", "Pressure", "Minutes Ago", "Hectopascals", reading
 */
 sum = 0;
 for (current = readings - 1; current >= 0; current--)
+	{
+	sum += history[current]->delay;
 	if (!history[current]->lost_communications)
 		{
 		timeline[current] = sum;
-		sum += history[current]->delay;
 		data[current] = history[current]->total_rain;
 		}
+	}
 render_html_graph("rain", "Cumulative Rainfall", "Minutes Ago", "millimetres", readings, timeline, data);
 
 /*
@@ -303,9 +503,9 @@ render_html_graph("rain", "Cumulative Rainfall", "Minutes Ago", "millimetres", r
 sum = 0;
 for (current = readings - 1; current >= 0; current--)
 	{
+	sum += history[current]->delay;
 	if (!history[current]->lost_communications)
 		timeline[current] = sum;
-	sum += history[current]->delay;
 	}
 
 for (current = readings - 1; current >= 0; current--)
@@ -342,15 +542,20 @@ return history;
 int main(int argc, char *argv[])
 {
 usb_weather station;
-usb_weather_reading *current;
-usb_weather_reading **historic;
+usb_weather_reading *current = NULL;
+usb_weather_reading **historic = NULL;
 
 if (station.connect(USB_WEATHER_VID, USB_WEATHER_PID) == 0)
 	{
-	render_html_header();
-	current = render_current_readings(&station);
-	historic = render_historic_readings(&station);
-	render_html_footer(&station, station.read_fixed_block(), current, historic);
+	if (mode == MODE_IPHONE)
+		current = render_current_readings_iphone(&station);
+	else
+		{
+		render_html_header();
+		current = render_current_readings(&station);
+		historic = render_historic_readings(&station);
+		render_html_footer(&station, station.read_fixed_block(), current, historic);
+		}
 	}
 else
 	exit(printf("Cannot find an attached weather station\n"));

@@ -30,7 +30,8 @@ public:
 	static double apparent_temperature(double temperature_in_c, double humidity, double windspeed_in_ms);
 	static double cloud_base(double temperature_in_c, double humidity);
 	static double cloud_temperature(double temperature_in_c, double humidity);
-	
+	static long beaufort(double windspeed_in_ms);
+	static char *weather_math::beaufort_name(long beaufort);
 };
 
 #endif /* WEATHER_MATH_H_ */
