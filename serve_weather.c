@@ -171,13 +171,16 @@ printf(" %d:%d", sun_hour, sun_minute);
 puts("<span class=\"symbol\">A</span></td></tr></table></td></tr>");
 
 /*
-	When the readings were taken
+	Whats the time and when were the readings were taken?
 */
 puts("<tr><td align=center>");
 fixed_block->current_time.text_render();
 printf(",", readings->delay);
-printf(" %ld minute%s ago</b><br>", readings->delay, readings->delay == 1 ? "" : "s");
-puts("</td></tr>");
+if (readings->delay == 0)
+	printf(" right now", readings->delay, readings->delay == 1 ? "" : "s");
+else
+	printf(" %ld minute%s ago", readings->delay, readings->delay == 1 ? "" : "s");
+puts("</b><br></td></tr>");
 
 /*
 	Wind
@@ -217,7 +220,7 @@ double dew_point = weather_math::dewpoint(readings->outdoor_temperature, reading
 double apparent_temperature = weather_math::apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
 //double apparent_temperature = weather_math::australian_apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
 
-printf("<tr><td align=center class=\"medium\">Feels like %0.0f&deg;C, Dewpoint:%0.0f&deg;C, Inside:%0.0f&deg;C %0.0f%%)</td></tr>", apparent_temperature, dew_point, readings->indoor_temperature, readings->indoor_humidity);
+printf("<tr><td align=center class=\"medium\">(Feels like %0.0f&deg;C, Dew point:%0.0f&deg;C, Inside:%0.0f&deg;C %0.0f%%)</td></tr>", apparent_temperature, dew_point, readings->indoor_temperature, readings->indoor_humidity);
 puts("</table>");
 
 
