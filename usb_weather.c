@@ -306,3 +306,26 @@ if (fixed_block == NULL)
 return read_reading(fixed_block->current_position);
 }
 
+/*
+	USB_WEATHER::READ_PREVIOUS_READINGS()
+	-------------------------------------
+*/
+usb_weather_reading *usb_weather::read_previous_readings(void)
+{
+uint16_t address;
+/*
+	Make sure we have the address we need
+*/
+if (fixed_block == NULL)
+	return NULL;
+
+/*
+	Get the reading
+*/
+if ((address = fixed_block->current_position - 16) < 0x100)
+	address = 0x10000 - sizeof(usb_weather_reading_raw);
+
+return read_reading(address);
+}
+
+

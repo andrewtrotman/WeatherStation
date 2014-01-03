@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <math.h>
 
 #include "usb_weather.h"
 #include "usb_weather_datetime.h"
@@ -22,7 +23,7 @@
 static const int mode = MODE_IPHONE;
 double lat = -45.8667;
 double lng = 170.5000;
-
+double BAROMETRIC_STEADY_THRESHOLD = 2;
 /*
 	These are the USB VID and PID of the weather station I've got
 */
@@ -54,11 +55,11 @@ switch ((int)(angle / 22.5))
 	case 2:
 		return "Northeasterly";
 	case 3:
-		return "NEE";
+		return "ENE";
 	case 4:
 		return "Easterly";
 	case 5:
-		return "SEE";
+		return "ESE";
 	case 6:
 		return "Southeasterly";
 	case 7:
@@ -89,14 +90,17 @@ return "No Wind";
 */
 usb_weather_reading *render_current_readings_iphone(usb_weather *station)
 {
-usb_weather_reading *readings;
+usb_weather_reading *readings, *previous;
 uint8_t year, month, day, hour, minute;
 int sun_hour, sun_minute;
-int daylight_savings;
+int daylight_savings, barometric_state;
+long z_number;
 TIME_ZONE_INFORMATION timezone_information;
 usb_weather_fixed_block_1080 *fixed_block;
 
 readings = station->read_current_readings();
+previous = station->read_previous_readings();
+
 if (readings == NULL)
 	exit(printf("Cannot read current readings\n"));
 
@@ -104,17 +108,16 @@ fixed_block = station->read_fixed_block();
 
 puts("<html>");
 puts("<style>");
-puts("@font-face");
-puts("	{");
-puts("	font-family: 'MeteoconsRegular';");
-puts("	src: url('meteocons-webfont.eot');");
-puts("	src: url('meteocons-webfont.eot?#iefix') format('embedded-opentype'),");
-puts("		 url('meteocons-webfont.woff') format('woff'),");
-puts("		 url('meteocons-webfont.ttf') format('truetype'),");
-puts("		 url('meteocons-webfont.svg#MeteoconsRegular') format('svg');");
-puts("	font-weight: normal;");
-puts("	font-style: normal;");
-puts("	}");
+puts("@font-face {");
+puts("    font-family: 'weather';");
+puts("    src: url('artill_clean_icons-webfont.eot');");
+puts("    src: url('artill_clean_icons-webfont.eot?#iefix') format('embedded-opentype'),");
+puts("         url('artill_clean_icons-webfont.woff') format('woff'),");
+puts("         url('artill_clean_icons-webfont.ttf') format('truetype'),");
+puts("         url('artill_clean_icons-webfont.svg#artill_clean_weather_iconsRg') format('svg');");
+puts("    font-weight: normal;");
+puts("    font-style: normal;");
+puts("}");
 puts("body, td");
 puts("	{");
 puts("	font-family:calibri,euphemiaucas;");
@@ -130,11 +133,13 @@ puts("	font-size:120pt;");
 puts("	}");
 puts(".megahuge");
 puts("	{");
-puts("	font-size:160pt");
+puts("	font-family:weather;");
+puts("	font-size:320pt");
 puts("	}");
 puts(".symbol");
 puts("	{");
-puts("	font-family:MeteoconsRegular;");
+puts("	font-family:weather;");
+puts("	font-size:60pt;");
 puts("	}");
 puts(".arrowfont");
 puts("	{");
@@ -159,16 +164,16 @@ puts("<table cellpadding=0 cellspacing=0 border=0 width=100%>");
 /*
 	Sunrise and Sunset
 */
-puts("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td align=left><span class=\"symbol\">B</span>");
+puts("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td align=left><span class=\"symbol\">7</span>");
 
 daylight_savings = (GetTimeZoneInformation(&timezone_information) == TIME_ZONE_ID_DAYLIGHT) ? 1 : 0;
 fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
 weather_math::sunrise(&sun_hour, &sun_minute, year + 2000, month, day, lat, lng, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
 printf("%d:%d", sun_hour, sun_minute);
-puts("</td><td align=center><span class=\"symbol\">C</span></td><td align=right>");
+puts("</td><td align=center><span class=\"symbol\">6</span></td><td align=right>");
 weather_math::sunset(&sun_hour, &sun_minute, year + 2000, month, day, lat, lng, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
 printf(" %d:%d", sun_hour, sun_minute);
-puts("<span class=\"symbol\">A</span></td></tr></table></td></tr>");
+puts("<span class=\"symbol\">8</span></td></tr></table></td></tr>");
 
 /*
 	Whats the time and when were the readings were taken?
@@ -199,18 +204,20 @@ printf("%0.2f", readings->outdoor_humidity);
 puts("%<br>");
 printf("%0.2f", readings->total_rain);
 puts("mm</td></tr></table></center></td></tr>");
-puts("<tr><td class=\"space\">&nbsp;</td></tr>");
 
 /*
-	Prediction
+	Pressure and Prediction
 */
-puts("<tr><td align=center class=\"megahuge\"><span class=\"symbol\">R</span></td></tr>");
-puts("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
-
-/*
-	Pressure
-*/
-printf("<tr><td align=center class=\"medium\">%0.2fhPa <span class=\"arrowfont\">&uarr;</span></td></tr>", readings->absolute_pressure);
+long z_to_font[] = {49, 49, 49, 65, 72, 65, 72, 76, 76, 72, 78, 86, 86, 84, 80, 76, 109, 71, 71, 83, 87, 80, 85, 81, 83, 81, 122};
+if (fabs(readings->absolute_pressure - previous->absolute_pressure) <= BAROMETRIC_STEADY_THRESHOLD)
+	barometric_state = weather_math::STEADY;
+else if (readings->absolute_pressure > previous->absolute_pressure)
+	barometric_state = weather_math::RISE;
+else
+	barometric_state = weather_math::FALL;
+z_number = weather_math::zambretti(readings->absolute_pressure, month, readings->wind_direction / 22.5, barometric_state, false);
+printf("<tr><td align=center class=\"megahuge\">&#%d;</td></tr>", z_to_font[z_number]);
+printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%s</span>%0.2fhPa (%s)</td></tr>", barometric_state == weather_math::RISE ? "&uarr;" : barometric_state == weather_math::STEADY ? "&bull;" : "&darr;", readings->absolute_pressure, weather_math::zambretti_name(z_number));
 printf("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
 
 /*
@@ -219,8 +226,7 @@ printf("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
 double dew_point = weather_math::dewpoint(readings->outdoor_temperature, readings->outdoor_humidity);
 double apparent_temperature = weather_math::apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
 //double apparent_temperature = weather_math::australian_apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
-
-printf("<tr><td align=center class=\"medium\">(Feels like %0.0f&deg;C, Dew point:%0.0f&deg;C, Inside:%0.0f&deg;C %0.0f%%)</td></tr>", apparent_temperature, dew_point, readings->indoor_temperature, readings->indoor_humidity);
+printf("<tr><td align=center class=\"medium\">(Feels:%0.0f&deg;C, Dew:%0.0f&deg;C, In:%0.0f&deg;C %0.0f%%)</td></tr>", apparent_temperature, dew_point, readings->indoor_temperature, readings->indoor_humidity);
 puts("</table>");
 
 

@@ -180,37 +180,24 @@ return 12;
 */
 char *weather_math::beaufort_name(long beaufort)
 {
-switch (beaufort)
+static char *message[] =
 	{
-	case 0:
-		return "Calm";
-	case 1:
-		return "Light Air";
-	case 2:
-		return "Light Breeze";
-	case 3:
-		return "Gentle Breeze";
-	case 4:
-		return "Moderate Breeze";
-	case 5:
-		return "Fresh Breeze";
-	case 6:
-		return "Strong Breeze";
-	case 7:
-		return "Moderate Gale";
-	case 8:
-		return "Gale";
-	case 9:
-		return "Strong Gale";
-	case 10:
-		return "Storm";
-	case 11:
-		return "Voilent Storm";
-	case 12:
-		return "Hurricane";
-	default:
-		return "Unknown";
-	}
+	"Calm",
+	"Light Air",
+	"Light Breeze",
+	"Gentle Breeze",
+	"Moderate Breeze",
+	"Fresh Breeze",
+	"Strong Breeze",
+	"Moderate Gale",
+	"Gale",
+	"Strong Gale",
+	"Storm",
+	"Voilent Storm",
+	"Hurricane"
+	};
+
+return message[beaufort];
 }
 
 /*
@@ -318,7 +305,6 @@ minutes = modf(localT, &hours) * 60;
 */
 void weather_math::sunset(int *hour, int *min, int year, int month, int day, float lat, float lng, int localOffset, int daylightSavings)
 {
-//float localT = fmod(24 + calculateSunrise(2014, 1, 1, -45.8667, 170.5000, 12, 1, SUNSET), (float)24.0);
 float localT = fmod(24 + calculate_sunrise_sunset(year, month, day, lat, lng, localOffset, daylightSavings, SUNSET), (float)24.0);
 double hours, minutes;
 
@@ -326,4 +312,139 @@ minutes = modf(localT, &hours) * 60;
 
 *hour = (int)hours;
 *min = (int)minutes;
+}
+
+/*
+	WEATHER_MATH::ZAMBRETTI()
+	-------------------------
+	Implementaton of the Zambretti weather forcast algorithm.  This code is based on the
+	Python version of the JavaScript implementation.  The important details are:
+
+	# honeysucklecottage.me.uk - Python port of beteljuice
+	# javascript forecaster. Comes with no warranty of any kind.
+	#
+	# Further tweaking / Pythonification by Jim Easterbrook
+	#
+	# beteljuice.com - near enough Zambretti Algorhithm
+	# June 2008 - v1.0
+	# tweak added so decision # can be output
+	#
+	# Negretti and Zambras 'slide rule' is supposed to be better than 90% accurate
+	# for a local forecast upto 12 hrs, it is most accurate in the temperate zones and about 09:00  hrs local solar time.
+	# I hope I have been able to 'tweak it' a little better ;-)
+	#
+	# This code is free to use and redistribute as long as NO CHARGE is EVER made for its use or output
+
+	Parameters:
+		z_hpa is Sea Level Adjusted (Relative) barometer in hPa or mB
+		z_month is current month as a number between 1 to 12
+		z_wind is integer 0 to 15. 0 = N, 1 = NNE, 2 = NE, ... , 15 = NNW
+		z_trend is barometer trend: (RISE, STEADY, FALL)
+		z_north - in northern hemisphere, default true
+		z_baro_top - upper range of barometer, default 1050
+		z_baro_bottom - lower range of barometer, default 950
+	Returns:
+		the position on the wheel (0..26) where 26 is for overflow and underflow.
+*/
+long weather_math::zambretti(double z_hpa, long z_month, long z_wind, long z_trend, long z_north, double z_baro_top, double z_baro_bottom)
+{
+size_t choice;
+
+/*
+	Equivalents of Zambretti 'dial window' letters A - Z (with "26" added for overflow and underflow)
+*/
+static long rise_options[]   = {25, 25, 25, 24, 24, 19, 16, 12, 11,  9,  8,  6,  5,  2, 1, 1, 0, 0, 0, 0, 0, 0, 26};
+static long steady_options[] = {25, 25, 25, 25, 25, 25, 23, 23, 22, 18, 15, 13, 10,  4, 1, 1, 0, 0, 0, 0, 0, 0, 26};
+static long fall_options[]   = {25, 25, 25, 25, 25, 25, 25, 25, 23, 23, 21, 20, 17, 14, 7, 3, 1, 1, 1, 0, 0, 0, 26};
+
+/*
+	Equivelant of the huge cast in the beteljuice.com version
+*/
+static long wind_scale[] = {6.0, 5.0, 5.0, 2.0, -0.5, -2.0, -5.0, -8.5, -12.0, -10.0, -6.0, -4.5, -3.0, -0.5, 1.5, 3.0};
+
+/*
+	How far through the scale are we?
+*/
+double z_option = (double)(z_hpa - z_baro_bottom) / (double)(z_baro_top - z_baro_bottom);
+
+/*
+	Are we northern or southen hemisphere
+*/
+if (!z_north)
+	z_wind = (z_wind + 8) % 16;		// southern hemisphere so add 180 degrees to the wind direction
+
+/*
+	Add the wind effect
+*/
+z_option += wind_scale[z_wind] / 100.0;
+
+/*
+	Add the summer effect (if we're in summer)
+*/
+if (z_north == (z_month >= 4 && z_month <= 9))
+	if (z_trend == RISE)
+		z_option += 7.0 / 100.0;
+	else if (z_trend == FALL)
+		z_option -= 7.0 / 100.0;
+
+choice = floor(z_option * 22.0);
+
+/*
+	Check for overflow and underflow of the tables
+*/
+if (choice < 0 || choice > 21)
+	choice = 22;
+
+/*
+	Return the message string
+*/
+if (z_trend == RISE)
+	return rise_options[choice];
+else if (z_trend == FALL)
+	return fall_options[choice];
+else					// Steady
+	return steady_options[choice];
+}
+
+/*
+	WEATHER_MATH::ZAMBRETTI_NAME()
+	------------------------------
+*/
+char *weather_math::zambretti_name(long number)
+{
+/*
+	Equivelant of the Zambretti message wheel
+*/
+static char *forecast[] = 
+	{
+	"Settled fine", 						// 49
+	"Fine weather", 						// 49
+	"Becoming fine", 						// 49
+	"Fine, becoming less settled", 			// 65
+	"Fine, possible showers", 				// 72
+	"Fairly fine, improving", 				// 65
+	"Fairly fine, possible showers early", 	// 72
+	"Fairly fine, showery later", 			// 76
+	"Showery early, improving", 			// 76
+	"Changeable, mending", 					// 72
+	"Fairly fine, showers likely", 			// 78
+	"Rather unsettled clearing later", 		// 86
+	"Unsettled, probably improving", 		// 86
+	"Showery, bright intervals", 			// 84
+	"Showery, becoming less settled", 		// 80
+	"Changeable, some rain", 				// 76
+	"Unsettled, short fine intervals", 		// 109
+	"Unsettled, rain later", 				// 71
+	"Unsettled, some rain", 				// 71
+	"Mostly very unsettled", 				// 83
+	"Occasional rain, worsening", 			// 87
+	"Rain at times, very unsettled", 		// 80
+	"Rain at frequent intervals", 			// 85
+	"Rain, very unsettled", 				// 81
+	"Stormy, may improve", 					// 83
+	"Stormy, much rain",					// 81
+	"Truely exceptional weather"			// 122  	// used for overflow or underflow... not a Zambretti code
+	};
+
+return forecast[number];
 }

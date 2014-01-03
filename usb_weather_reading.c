@@ -16,13 +16,13 @@ void usb_weather_reading::text_render(char *title)
 puts(title);
 
 printf("Time since last recording:%d mins\n", delay);
-printf("Indoor Temperature       :%2.2fC\n", indoor_temperature);
-printf("Indoor Humidity          :%d%%\n", indoor_humidity);
+printf("Indoor Temperature       :%0.2fC\n", indoor_temperature);
+printf("Indoor Humidity          :%0.2f%%\n", indoor_humidity);
 printf("Pressure                 :%0.2fhPa\n", absolute_pressure);
 
 if (!lost_communications)
 	{
-	printf("Outdoor Humidity         :% %%\n", outdoor_humidity);
+	printf("Outdoor Humidity         :%0.2f %%\n", outdoor_humidity);
 	printf("Outdoor Temperature      :%0.2fC\n", outdoor_temperature);
 	printf("Average windspeed        :%0.2fm/s\n", average_windspeed);
 	printf("Gust windspeed           :%0.2fm/s\n", gust_windspeed);

@@ -33,6 +33,7 @@ public:
 	usb_weather_reading *read_reading(uint16_t address);
 	usb_weather_fixed_block_1080 *read_fixed_block(void);
 	usb_weather_reading *read_current_readings(void);
+	usb_weather_reading *read_previous_readings(void);
 	usb_weather_reading **read_all_readings(uint32_t *readings);
 } ;
 
