@@ -5,8 +5,26 @@
 	Licensed BSD
 */
 #include <math.h>
+#include <string.h>
 #include "weather_math.h"
 
+/*
+	MAX()
+	-----
+*/
+size_t max (const size_t a, const size_t b)
+{
+return (a < b) ? b : a;
+}
+
+/*
+	MIN()
+	-----
+*/
+size_t min (const size_t a, const size_t b)
+{
+return (a < b) ? a : b;
+}
 
 /*
 	WEATHER_MATH::C_TO_F()
@@ -315,6 +333,49 @@ minutes = modf(localT, &hours) * 60;
 }
 
 /*
+	WEATHER_MATH::ZAMBRETTI_NAME()
+	------------------------------
+*/
+char *weather_math::zambretti_name(long number)
+{
+/*
+	Equivelant of the Zambretti message wheel
+*/
+static char *forecast[] = 
+	{
+	"Settled fine",
+	"Fine weather",
+	"Becoming fine",
+	"Fine, becoming less settled",
+	"Fine, possible showers",
+	"Fairly fine, improving",
+	"Fairly fine, possible showers early",
+	"Fairly fine, showery later",
+	"Showery early, improving",
+	"Changeable, mending",
+	"Fairly fine, showers likely",
+	"Rather unsettled clearing later",
+	"Unsettled, probably improving",
+	"Showery, bright intervals",
+	"Showery, becoming less settled",
+	"Changeable, some rain",
+	"Unsettled, short fine intervals",
+	"Unsettled, rain later",
+	"Unsettled, some rain",
+	"Mostly very unsettled",
+	"Occasional rain, worsening",
+	"Rain at times, very unsettled",
+	"Rain at frequent intervals",
+	"Rain, very unsettled",
+	"Stormy, may improve",
+	"Stormy, much rain",
+	"Truely exceptional weather"  // used for overflow or underflow... not a Zambretti code
+	};
+
+return forecast[number];
+}
+
+/*
 	WEATHER_MATH::ZAMBRETTI()
 	-------------------------
 	Implementaton of the Zambretti weather forcast algorithm.  This code is based on the
@@ -336,7 +397,7 @@ minutes = modf(localT, &hours) * 60;
 	# This code is free to use and redistribute as long as NO CHARGE is EVER made for its use or output
 
 	Parameters:
-		z_hpa is Sea Level Adjusted (Relative) barometer in hPa or mB
+		z_hpa is Absolure Pressure in hPa or mB
 		z_month is current month as a number between 1 to 12
 		z_wind is integer 0 to 15. 0 = N, 1 = NNE, 2 = NE, ... , 15 = NNW
 		z_trend is barometer trend: (RISE, STEADY, FALL)
@@ -360,12 +421,12 @@ static long fall_options[]   = {25, 25, 25, 25, 25, 25, 25, 25, 23, 23, 21, 20, 
 /*
 	Equivelant of the huge cast in the beteljuice.com version
 */
-static long wind_scale[] = {6.0, 5.0, 5.0, 2.0, -0.5, -2.0, -5.0, -8.5, -12.0, -10.0, -6.0, -4.5, -3.0, -0.5, 1.5, 3.0};
+static long wind_scale[] = {6.0, 5.0, 5.0, 2.00, -0.5, -2.00, -5.0, -8.50, -12.0, -10.0, -6.0, -4.50, -3.0, -0.50, 1.5, 3.00};
 
 /*
 	How far through the scale are we?
 */
-double z_option = (double)(z_hpa - z_baro_bottom) / (double)(z_baro_top - z_baro_bottom);
+double z_option = 950.0 + ((1050.0 - 950.0) * (double)(z_hpa - z_baro_bottom) / (double)(z_baro_top - z_baro_bottom));
 
 /*
 	Are we northern or southen hemisphere
@@ -407,44 +468,195 @@ else					// Steady
 }
 
 /*
-	WEATHER_MATH::ZAMBRETTI_NAME()
-	------------------------------
+	WEATHER_MATH::ZAMBRETTI_PYWWS()
+	-------------------------------
+	See zambretti().  This version is a translation of the version from PYWWS. It is under a GPL license
+
+	In this version:
+		'trend' is the barometric pressuer over the previous hour
+		pressure is absolute pressure (in the range baro_top..double baro_bottom)
+	Notes;
+		PYWWS assumes a windspeed of less than 0.3m/s is NO_WIND
+		PYWWS assumes a trend of hourly_pressure_change_in_hPa / 3
 */
-char *weather_math::zambretti_name(long number)
+long weather_math::zambretti_pywws(double pressure, long month, long wind, long trend, long north, double baro_top, double baro_bottom)
 {
+char *LUT;
+double F;
+size_t G;
+
 /*
-	Equivelant of the Zambretti message wheel
+	normalise pressure
 */
-static char *forecast[] = 
+pressure = 950.0 + ((1050.0 - 950.0) * (pressure - baro_bottom) / (baro_top - baro_bottom));
+
+/*
+	adjust pressure for wind direction
+*/
+if (wind != NO_WIND)
 	{
-	"Settled fine", 						// 49
-	"Fine weather", 						// 49
-	"Becoming fine", 						// 49
-	"Fine, becoming less settled", 			// 65
-	"Fine, possible showers", 				// 72
-	"Fairly fine, improving", 				// 65
-	"Fairly fine, possible showers early", 	// 72
-	"Fairly fine, showery later", 			// 76
-	"Showery early, improving", 			// 76
-	"Changeable, mending", 					// 72
-	"Fairly fine, showers likely", 			// 78
-	"Rather unsettled clearing later", 		// 86
-	"Unsettled, probably improving", 		// 86
-	"Showery, bright intervals", 			// 84
-	"Showery, becoming less settled", 		// 80
-	"Changeable, some rain", 				// 76
-	"Unsettled, short fine intervals", 		// 109
-	"Unsettled, rain later", 				// 71
-	"Unsettled, some rain", 				// 71
-	"Mostly very unsettled", 				// 83
-	"Occasional rain, worsening", 			// 87
-	"Rain at times, very unsettled", 		// 80
-	"Rain at frequent intervals", 			// 85
-	"Rain, very unsettled", 				// 81
-	"Stormy, may improve", 					// 83
-	"Stormy, much rain",					// 81
-	"Truely exceptional weather"			// 122  	// used for overflow or underflow... not a Zambretti code
+	if (!north)
+		wind = (wind + 8) % 16;		// southern hemisphere, so add 180 degrees
+	static const double wind_scale[] = {5.2,  4.2,  3.2,  1.05, -1.1, -3.15, -5.2, -8.35, -11.5, -9.4, -7.3, -5.25, -3.2, -1.15,  0.9,  3.05};
+	pressure += wind_scale[wind];
+	}
+
+/*
+	Compute base forecast from pressure and trend (hPa / hour)
+*/
+if (trend >= 0.1)
+	{
+	/*
+		rising pressure
+	*/
+	if (north == (month >= 4 && month <= 9))
+		pressure += 3.2;
+	F = 0.1740 * (1031.40 - pressure);
+	LUT = "ABBCFGIJLMMQTY";
+	}
+else if (trend <= -0.1)
+	{
+	/*
+		falling pressure
+	*/
+	if (north == (month >= 4 && month <= 9))
+		pressure -= 3.2;
+	F = 0.1553 * (1029.95 - pressure);
+	LUT = "BDHORUVXXZ";
+	}
+else
+	{
+	/*
+		steady
+	*/
+	F = 0.2314 * (1030.81 - pressure);
+	LUT = "ABBBEKNNPPSWWXXXZ";
+	}
+
+/*
+	clip to range of lookup table
+*/
+G = min(max((int)(F + 0.5), 0), strlen(LUT) - 1);
+
+/*
+	convert to letter code
+*/
+return LUT[G] - 'A';
+}
+
+
+/*
+	WEATHER_MATH::PRESSURE_TREND()
+	------------------------------
+	UK Met office names for the hourly barometric change
+*/
+long weather_math::pressure_trend(double hourly_pressure_change_in_hPa)
+{
+if (hourly_pressure_change_in_hPa > 6.0)
+	return 4;
+else if (hourly_pressure_change_in_hPa > 3.5)
+	return 4;
+else if (hourly_pressure_change_in_hPa > 1.5)
+	return 2;
+else if (hourly_pressure_change_in_hPa >= 0.1)
+	return 1;
+else if (hourly_pressure_change_in_hPa < -6.0)
+	return -4;
+else if (hourly_pressure_change_in_hPa < -3.5)
+	return -3;
+else if (hourly_pressure_change_in_hPa < -1.5)
+	return -2;
+else if (hourly_pressure_change_in_hPa <= -0.1)
+	return -1;
+
+return 0;
+}
+
+/*
+	WEATHER_MATH::PRESSURE_TREND_NAME()
+	-----------------------------------
+*/
+char *weather_math::pressure_trend_name(long change)
+{
+char *names[] =
+	{
+	"falling very rapidly",
+	"falling quickly",
+	"falling",
+	"falling slowly"
+	"Steady",
+	"rising slowly",
+	"rising",
+	"rising quickly",
+	"rising very rapidly"
 	};
 
-return forecast[number];
+if (change >= -4 && change <= 4)
+	return names[change + 4];
+else
+	return "Unknown";
+}
+
+
+/*
+	WEATHER_MATH::JULDAY()
+	----------------------
+	Helper function for the computation of the moon phase
+	see:http://www.ben-daglish.net/moon.shtml
+*/
+long weather_math::julday(long year, long month, long day)
+{
+if (year < 0)
+	year++; 
+
+long jy = year;
+long jm = month + 1;
+
+if (month <= 2)
+	{
+	jy--;
+	jm += 12;
+	} 
+
+long jul = floor(365.25 * jy) + floor(30.6001 * jm) + day + 1720995;
+
+if (day + 31 * (month + 12 * year) >= (15 + 31 * (10 + 12 * 1582)))
+	{
+	double ja = floor(0.01 * jy);
+	jul = jul + 2 - ja + floor(0.25 * ja);
+	}
+
+return jul;
+}
+
+
+/*
+	WEATHER_MATH::PHASE_OF_MOON()
+	-----------------------------
+	The Trig2 algorithm for computing the phase of the moon
+	see:http://www.ben-daglish.net/moon.shtml
+
+	Returns:
+		a number in the range 0..29 (0 == new moon, 15 = full moon, etc)
+*/
+long weather_math::phase_of_moon(long year, long month, long day)
+{
+long n;
+
+n = floor(12.37 * (year - 1900 + ((1.0 * month - 0.5) / 12.0)));
+
+double RAD = 3.14159265 / 180.0;
+double t = n / 1236.85;
+double t2 = t * t;
+double as = 359.2242 + 29.105356 * n;
+double am = 306.0253 + 385.816918 * n + 0.010730 * t2;
+double xtra = 0.75933 + 1.53058868 * n + ((1.178e-4) - (1.55e-7) * t) * t2;
+
+xtra += (0.1734 - 3.93e-4 * t) * sin(RAD * as) - 0.4068 * sin(RAD * am);
+
+double i = (xtra > 0.0 ? floor(xtra) : ceil(xtra - 1.0));
+long j1 = julday(year, month, day);
+long jd = (2415020 + 28 * n) + i;
+
+return (j1 - jd + 30) % 30;
 }

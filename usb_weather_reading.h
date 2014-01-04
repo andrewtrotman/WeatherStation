@@ -16,7 +16,14 @@
 class usb_weather_reading
 {
 public:
-	uint8_t  delay;						// minutes since last reading
+	/*
+		The station keeps writing the current values to the same area of
+		memory every 48 seconds, until the logging interval comes around,
+		then it moves on to the next memory location, leaving the last
+		values it wrote as the logger data.
+		(see:http://sandaysoft.com/forum/viewtopic.php?f=13&t=10524)
+	*/
+	uint8_t  delay;						// minutes since last recording
 	double indoor_humidity;				// percent
 	double indoor_temperature;			// degrees C
 	double outdoor_humidity;			// percent

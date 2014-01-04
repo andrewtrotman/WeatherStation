@@ -23,7 +23,7 @@
 static const int mode = MODE_IPHONE;
 double lat = -45.8667;
 double lng = 170.5000;
-double BAROMETRIC_STEADY_THRESHOLD = 2;
+double BAROMETRIC_STEADY_THRESHOLD = 1;
 /*
 	These are the USB VID and PID of the weather station I've got
 */
@@ -118,6 +118,18 @@ puts("         url('artill_clean_icons-webfont.svg#artill_clean_weather_iconsRg'
 puts("    font-weight: normal;");
 puts("    font-style: normal;");
 puts("}");
+
+puts("@font-face {");
+puts("    font-family: 'moon_phasesregular';");
+puts("    src: url('moon_phases-webfont.eot');");
+puts("    src: url('moon_phases-webfont.eot?#iefix') format('embedded-opentype'),");
+puts("         url('moon_phases-webfont.woff') format('woff'),");
+puts("         url('moon_phases-webfont.ttf') format('truetype'),");
+puts("         url('moon_phases-webfont.svg#moon_phasesregular') format('svg');");
+puts("    font-weight: normal;");
+puts("    font-style: normal;");
+puts("}");
+
 puts("body, td");
 puts("	{");
 puts("	font-family:calibri,euphemiaucas;");
@@ -141,6 +153,11 @@ puts("	{");
 puts("	font-family:weather;");
 puts("	font-size:60pt;");
 puts("	}");
+puts(".moon");
+puts("	{");
+puts("	font-family:moon_phasesregular;");
+puts("	font-size:40pt;");
+puts("	}");
 puts(".arrowfont");
 puts("	{");
 puts("	font-family:times;");
@@ -162,29 +179,26 @@ puts("<body>");
 puts("<table cellpadding=0 cellspacing=0 border=0 width=100%>");
 
 /*
-	Sunrise and Sunset
+	Sunrise, Moon, and Sunset
 */
 puts("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td align=left><span class=\"symbol\">7</span>");
-
 daylight_savings = (GetTimeZoneInformation(&timezone_information) == TIME_ZONE_ID_DAYLIGHT) ? 1 : 0;
 fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
 weather_math::sunrise(&sun_hour, &sun_minute, year + 2000, month, day, lat, lng, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
 printf("%d:%d", sun_hour, sun_minute);
-puts("</td><td align=center><span class=\"symbol\">6</span></td><td align=right>");
+
+uint8_t moon_phase = (weather_math::phase_of_moon(2000 + year, month, day) / 29.0) * 26.0;
+printf("</td><td align=center><span class=\"moon\">%c</span></td><td align=right>", 'A' + moon_phase);
+
 weather_math::sunset(&sun_hour, &sun_minute, year + 2000, month, day, lat, lng, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
 printf(" %d:%d", sun_hour, sun_minute);
 puts("<span class=\"symbol\">8</span></td></tr></table></td></tr>");
 
 /*
-	Whats the time and when were the readings were taken?
+	Whats the time now? 
 */
 puts("<tr><td align=center>");
 fixed_block->current_time.text_render();
-printf(",", readings->delay);
-if (readings->delay == 0)
-	printf(" right now", readings->delay, readings->delay == 1 ? "" : "s");
-else
-	printf(" %ld minute%s ago", readings->delay, readings->delay == 1 ? "" : "s");
 puts("</b><br></td></tr>");
 
 /*
@@ -192,7 +206,7 @@ puts("</b><br></td></tr>");
 */
 printf("<tr><td align=center class=\"huge\">%s</td></tr>", wind_direction(readings->wind_direction));
 printf("<tr><td align=center class=\"medium\">%0.2fKn gusts to %0.2fKn (%s)</td></tr>", knots(readings->average_windspeed), knots(readings->gust_windspeed), weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
-puts("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
+//puts("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
 
 /*
 	Outdoor temperature, humidity, rainfall
@@ -209,15 +223,31 @@ puts("mm</td></tr></table></center></td></tr>");
 	Pressure and Prediction
 */
 long z_to_font[] = {49, 49, 49, 65, 72, 65, 72, 76, 76, 72, 78, 86, 86, 84, 80, 76, 109, 71, 71, 83, 87, 80, 85, 81, 83, 81, 122};
-if (fabs(readings->absolute_pressure - previous->absolute_pressure) <= BAROMETRIC_STEADY_THRESHOLD)
-	barometric_state = weather_math::STEADY;
-else if (readings->absolute_pressure > previous->absolute_pressure)
-	barometric_state = weather_math::RISE;
-else
-	barometric_state = weather_math::FALL;
-z_number = weather_math::zambretti(readings->absolute_pressure, month, readings->wind_direction / 22.5, barometric_state, false);
+
+#define PYWWS_VERSION
+#ifdef PYWWS_VERSION
+	usb_weather_reading *deltas = station->read_hourly_delta();
+	double wind_direction = (readings->average_windspeed < 0.3) ? weather_math::NO_WIND : readings->wind_direction / 22.5;
+	double barometric_delta = deltas->absolute_pressure / 3;
+	z_number = weather_math::zambretti_pywws(readings->absolute_pressure, month, wind_direction, barometric_delta, false);
+#else
+	if (fabs(readings->absolute_pressure - previous->absolute_pressure) <= BAROMETRIC_STEADY_THRESHOLD)
+		barometric_state = weather_math::STEADY;
+	else if (readings->absolute_pressure > previous->absolute_pressure)
+		barometric_state = weather_math::RISE;
+	else
+		barometric_state = weather_math::FALL;
+	z_number = weather_math::zambretti(readings->absolute_pressure, month, readings->wind_direction / 22.5, barometric_state, false);
+#endif
+
 printf("<tr><td align=center class=\"megahuge\">&#%d;</td></tr>", z_to_font[z_number]);
-printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%s</span>%0.2fhPa (%s)</td></tr>", barometric_state == weather_math::RISE ? "&uarr;" : barometric_state == weather_math::STEADY ? "&bull;" : "&darr;", readings->absolute_pressure, weather_math::zambretti_name(z_number));
+
+#ifdef PYWWS_VERSION
+	int trend = weather_math::pressure_trend(deltas->absolute_pressure);
+	printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%*.*s</span>%0.2fhPa (%s)</td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", readings->absolute_pressure, weather_math::zambretti_name(z_number));
+#else
+	printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%s</span>%0.2fhPa (%s)</td></tr>", barometric_state == weather_math::RISE ? "&uarr;" : barometric_state == weather_math::STEADY ? "&bull;" : "&darr;", readings->absolute_pressure, weather_math::zambretti_name(z_number));
+#endif
 printf("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
 
 /*
@@ -475,8 +505,8 @@ data = new double [readings];
 sum = 0;
 for (current = readings - 1; current >= 0; current--)
 	{
-	sum += history[current]->delay;
 	timeline[current] = sum;
+	sum += history[current]->delay;
 	}
 
 for (current = readings - 1; current >= 0; current--)
@@ -497,12 +527,12 @@ render_html_graph("pressure", "Pressure", "Minutes Ago", "Hectopascals", reading
 sum = 0;
 for (current = readings - 1; current >= 0; current--)
 	{
-	sum += history[current]->delay;
 	if (!history[current]->lost_communications)
 		{
 		timeline[current] = sum;
 		data[current] = history[current]->total_rain;
 		}
+	sum += history[current]->delay;
 	}
 render_html_graph("rain", "Cumulative Rainfall", "Minutes Ago", "millimetres", readings, timeline, data);
 
@@ -512,9 +542,9 @@ render_html_graph("rain", "Cumulative Rainfall", "Minutes Ago", "millimetres", r
 sum = 0;
 for (current = readings - 1; current >= 0; current--)
 	{
-	sum += history[current]->delay;
 	if (!history[current]->lost_communications)
 		timeline[current] = sum;
+	sum += history[current]->delay;
 	}
 
 for (current = readings - 1; current >= 0; current--)

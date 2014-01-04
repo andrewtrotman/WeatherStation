@@ -328,4 +328,58 @@ if ((address = fixed_block->current_position - 16) < 0x100)
 return read_reading(address);
 }
 
+/*
+	USB_WEATHER::READ_HOURLY_DELTA()
+	--------------------------------
+	get the change over the previous hour
+*/
+usb_weather_reading *usb_weather::read_hourly_delta(void)
+{
+uint16_t max_reads, time, address;
+usb_weather_reading *now, *previous;
+uint8_t rain_overflow, finish;
 
+address = fixed_block->current_position;
+max_reads = fixed_block->data_count;
+if ((now = read_reading(address)) == NULL)
+	return NULL;
+
+rain_overflow = now->rain_counter_overflow;
+time = now->delay;
+max_reads--;
+finish = max_reads < 0;
+while (!finish)
+	{
+	if ((address = fixed_block->current_position - 16) < 0x100)
+		address = 0x10000 - sizeof(usb_weather_reading_raw);
+	if ((previous = read_reading(address)) == NULL)
+		{
+		delete now;
+		return NULL;
+		}
+	rain_overflow = rain_overflow || previous->rain_counter_overflow;
+	time += previous->delay;
+	max_reads--;
+	if (max_reads < 0)
+		finish = true;
+	if (time > 60 && !previous->lost_communications)
+		finish = true;
+	else
+		delete previous;
+	}
+
+now->delay = time;
+now->indoor_humidity -= previous->indoor_humidity;
+now->indoor_temperature -= previous->indoor_temperature;
+now->outdoor_humidity -= previous->outdoor_humidity;
+now->outdoor_temperature -= previous->outdoor_temperature;
+now->absolute_pressure -= previous->absolute_pressure;
+now->average_windspeed -= previous->average_windspeed;
+now->gust_windspeed -= previous->gust_windspeed;
+now->wind_direction -= (int)previous->wind_direction % 360;
+now->total_rain -= previous->total_rain;
+now->rain_counter_overflow = rain_overflow;
+now->lost_communications = max_reads < 0;					// technically... did we or did we not manage to read an hour's worth
+
+return now;
+}
