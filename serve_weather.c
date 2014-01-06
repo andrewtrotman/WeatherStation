@@ -115,12 +115,22 @@ puts("<meta name=\"apple-mobile-web-app-capable\" content=\"yes\">");
 puts("<meta name=\"apple-mobile-web-app-title\" content=\"ScarbaWeather\">");
 puts("<meta name=\"apple-mobile-web-app-status-bar-style\" content=\"black\">");
 
-//puts("<meta name=\"viewport\" content=\"initial-scale=1\">");
-//puts("<style>");
-//puts("    -webkit-text-size-adjust: 100%;");
-//puts("</style>");
+//puts("<meta id=\"viewport\" name=\"viewport\" content=\"initial-scale=0.70\">");
+puts("<meta id=\"viewport\" name=\"viewport\" content=\"initial-scale=0.1\">");
+
+puts("<script>");
+
+puts("if (window.screen.availHeight == 460)");			// iPhone 4
+puts("	document.getElementById(\"viewport\").setAttribute(\"content\", \"initial-scale=0.32\");");
+puts("else if (window.screen.availHeight == 1004)");	// iPad
+puts("	document.getElementById(\"viewport\").setAttribute(\"content\", \"initial-scale=0.7\");");
+puts("else");											// iPhone 5?
+puts("	document.getElementById(\"viewport\").setAttribute(\"content\", \"initial-scale=0.3\");");
+
+puts("</script>");
 
 puts("<style>");
+
 puts("@font-face {");
 puts("    font-family: 'weather';");
 puts("    src: url('artill_clean_icons-webfont.eot');");
@@ -143,7 +153,13 @@ puts("    font-weight: normal;");
 puts("    font-style: normal;");
 puts("}");
 
-puts("body, td");
+puts("html, body");
+puts("	{");
+puts("	font-family:calibri,euphemiaucas;");
+puts("	font-size:36pt;");
+puts("	height:100%");
+puts("	}");
+puts("td");
 puts("	{");
 puts("	font-family:calibri,euphemiaucas;");
 puts("	font-size:36pt;");
@@ -184,6 +200,13 @@ puts(".halfspace");
 puts("	{");
 puts("	line-height:20px;");
 puts("	}");
+
+puts("A:link, A:visited, A:active, A:hover ");
+puts("	{");
+puts("	text-decoration: none;");
+puts("	color: black;");
+puts("	}");
+
 puts("</style>");
 puts("</head>");
 
@@ -263,13 +286,13 @@ printf("<tr><td align=center class=\"megahuge\">&#%d;</td></tr>", z_to_font[z_nu
 #else
 	printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%s</span>%0.2fhPa (%s)</td></tr>", barometric_state == weather_math::RISE ? "&uarr;" : barometric_state == weather_math::STEADY ? "&bull;" : "&darr;", readings->absolute_pressure, weather_math::zambretti_name(z_number));
 #endif
-printf("<tr><td class=\"space\">&nbsp;</td></tr>");
+printf("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
 
 /*
 	Inside temperature and humidity
 */
 double dew_point = weather_math::dewpoint(readings->outdoor_temperature, readings->outdoor_humidity);
-printf("<tr><td align=center class=\"medium\">(Dewpoint:%0.0f&deg;C, Inside:%0.0f&deg;C %0.0f%%)</td></tr>", dew_point, readings->indoor_temperature, readings->indoor_humidity);
+printf("<tr><td align=center class=\"medium\">(Dewpoint:%0.0f&deg;C, Inside:%0.0f&deg;C %0.0f%%) <span class=symbol><span class=huge><a href=%s>*</a></span></span></td></tr>", dew_point, readings->indoor_temperature, readings->indoor_humidity, getenv("SCRIPT_NAME"));
 puts("</table>");
 
 
