@@ -97,9 +97,11 @@ int daylight_savings, barometric_state;
 long z_number;
 TIME_ZONE_INFORMATION timezone_information;
 usb_weather_fixed_block_1080 *fixed_block;
+usb_weather_reading *deltas;
 
 readings = station->read_current_readings();
 previous = station->read_previous_readings();
+deltas = station->read_hourly_delta();				// hourly deltas
 
 if (readings == NULL)
 	exit(printf("Cannot read current readings\n"));
@@ -107,6 +109,17 @@ if (readings == NULL)
 fixed_block = station->read_fixed_block();
 
 puts("<html>");
+puts("<head>");
+
+puts("<meta name=\"apple-mobile-web-app-capable\" content=\"yes\">");
+puts("<meta name=\"apple-mobile-web-app-title\" content=\"ScarbaWeather\">");
+puts("<meta name=\"apple-mobile-web-app-status-bar-style\" content=\"black\">");
+
+//puts("<meta name=\"viewport\" content=\"initial-scale=1\">");
+//puts("<style>");
+//puts("    -webkit-text-size-adjust: 100%;");
+//puts("</style>");
+
 puts("<style>");
 puts("@font-face {");
 puts("    font-family: 'weather';");
@@ -141,12 +154,12 @@ puts("	font-size:40pt;");
 puts("	}");
 puts(".huge");
 puts("	{");
-puts("	font-size:120pt;");
+puts("	font-size:100pt;");
 puts("	}");
 puts(".megahuge");
 puts("	{");
 puts("	font-family:weather;");
-puts("	font-size:320pt");
+puts("	font-size:380pt");
 puts("	}");
 puts(".symbol");
 puts("	{");
@@ -172,8 +185,7 @@ puts("	{");
 puts("	line-height:20px;");
 puts("	}");
 puts("</style>");
-
-puts("<head></head>");
+puts("</head>");
 
 puts("<body>");
 puts("<table cellpadding=0 cellspacing=0 border=0 width=100%>");
@@ -206,19 +218,23 @@ puts("</b><br></td></tr>");
 */
 printf("<tr><td align=center class=\"huge\">%s</td></tr>", wind_direction(readings->wind_direction));
 printf("<tr><td align=center class=\"medium\">%0.2fKn gusts to %0.2fKn (%s)</td></tr>", knots(readings->average_windspeed), knots(readings->gust_windspeed), weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
-//puts("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
+puts("<tr><td class=\"space\">&nbsp;</td></tr>");
 
 /*
 	Outdoor temperature, humidity, rainfall
 */
+double apparent_temperature = weather_math::apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
+//double australian_apparent_temperature = weather_math::australian_apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
+
 puts("<tr><td align=center><center><table cellpadding=0 cellspacing=0 border=0><tr><td align=right class=\"huge\">");
-printf("%0.2f", readings->outdoor_temperature);
-puts("&deg;C&nbsp;</td><td align=left class=\"medium\">");
+printf("<span class=\"arrowfont\">%s</span>%0.2f", deltas->outdoor_temperature > 0 ? "&uarr;" : deltas->outdoor_temperature < 0 ? "&darr;" : "", readings->outdoor_temperature);
+printf("&deg;C&nbsp;</td><td align=left class=\"medium\">");
 printf("%0.2f", readings->outdoor_humidity);
 puts("%<br>");
 printf("%0.2f", readings->total_rain);
-puts("mm</td></tr></table></center></td></tr>");
-
+puts("mm</td></tr>");
+printf("<tr><td><span class=\"medium\"><center>(Feels like:%0.0f&deg;C)<center></span></td><td></td></tr>", apparent_temperature);
+puts("</table></center></td></tr>");
 /*
 	Pressure and Prediction
 */
@@ -226,7 +242,6 @@ long z_to_font[] = {49, 49, 49, 65, 72, 65, 72, 76, 76, 72, 78, 86, 86, 84, 80, 
 
 #define PYWWS_VERSION
 #ifdef PYWWS_VERSION
-	usb_weather_reading *deltas = station->read_hourly_delta();
 	double wind_direction = (readings->average_windspeed < 0.3) ? weather_math::NO_WIND : readings->wind_direction / 22.5;
 	double barometric_delta = deltas->absolute_pressure / 3;
 	z_number = weather_math::zambretti_pywws(readings->absolute_pressure, month, wind_direction, barometric_delta, false);
@@ -248,15 +263,13 @@ printf("<tr><td align=center class=\"megahuge\">&#%d;</td></tr>", z_to_font[z_nu
 #else
 	printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%s</span>%0.2fhPa (%s)</td></tr>", barometric_state == weather_math::RISE ? "&uarr;" : barometric_state == weather_math::STEADY ? "&bull;" : "&darr;", readings->absolute_pressure, weather_math::zambretti_name(z_number));
 #endif
-printf("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
+printf("<tr><td class=\"space\">&nbsp;</td></tr>");
 
 /*
 	Inside temperature and humidity
 */
 double dew_point = weather_math::dewpoint(readings->outdoor_temperature, readings->outdoor_humidity);
-double apparent_temperature = weather_math::apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
-//double apparent_temperature = weather_math::australian_apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
-printf("<tr><td align=center class=\"medium\">(Feels:%0.0f&deg;C, Dew:%0.0f&deg;C, In:%0.0f&deg;C %0.0f%%)</td></tr>", apparent_temperature, dew_point, readings->indoor_temperature, readings->indoor_humidity);
+printf("<tr><td align=center class=\"medium\">(Dewpoint:%0.0f&deg;C, Inside:%0.0f&deg;C %0.0f%%)</td></tr>", dew_point, readings->indoor_temperature, readings->indoor_humidity);
 puts("</table>");
 
 
@@ -583,6 +596,8 @@ int main(int argc, char *argv[])
 usb_weather station;
 usb_weather_reading *current = NULL;
 usb_weather_reading **historic = NULL;
+
+puts("Content-type: text/html\n");
 
 if (station.connect(USB_WEATHER_VID, USB_WEATHER_PID) == 0)
 	{
