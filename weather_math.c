@@ -196,9 +196,9 @@ return 12;
 	WEATHER_MATH::BEAUFORT_NAME()
 	-----------------------------
 */
-char *weather_math::beaufort_name(long beaufort)
+const char *weather_math::beaufort_name(long beaufort)
 {
-static char *message[] =
+static const char *message[] =
 	{
 	"Calm",
 	"Light Air",
@@ -336,12 +336,12 @@ minutes = modf(localT, &hours) * 60;
 	WEATHER_MATH::ZAMBRETTI_NAME()
 	------------------------------
 */
-char *weather_math::zambretti_name(long number)
+const char *weather_math::zambretti_name(long number)
 {
 /*
 	Equivelant of the Zambretti message wheel
 */
-static char *forecast[] = 
+static const char *forecast[] = 
 	{
 	"Settled fine",
 	"Fine weather",
@@ -481,7 +481,7 @@ else					// Steady
 */
 long weather_math::zambretti_pywws(double pressure, long month, long wind, long trend, long north, double baro_top, double baro_bottom)
 {
-char *LUT;
+const char *LUT;
 double F;
 size_t G;
 
@@ -576,9 +576,9 @@ return 0;
 	WEATHER_MATH::PRESSURE_TREND_NAME()
 	-----------------------------------
 */
-char *weather_math::pressure_trend_name(long change)
+const char *weather_math::pressure_trend_name(long change)
 {
-char *names[] =
+static const char *names[] =
 	{
 	"falling very rapidly",
 	"falling quickly",

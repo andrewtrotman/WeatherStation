@@ -12,7 +12,7 @@
 #else
 	typedef int HANDLE;
 	typedef long DWORD;
-	#define INVALID_HANDLE_VALUE -1;
+	#define INVALID_HANDLE_VALUE -1
 #endif
 
 #include "fundamental_types.h"

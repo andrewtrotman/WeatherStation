@@ -37,12 +37,12 @@ public:
 	static double cloud_base(double temperature_in_c, double humidity);
 	static double cloud_temperature(double temperature_in_c, double humidity);
 	static long beaufort(double windspeed_in_ms);
-	static char *weather_math::beaufort_name(long beaufort);
+	static const char *beaufort_name(long beaufort);
 	static long zambretti(double z_hpa, long z_month, long z_wind, long z_trend, long z_north = true, double z_baro_top = 1050, double z_baro_bottom = 950);
 	static long zambretti_pywws(double z_hpa, long z_month, long z_wind, long z_trend, long z_north = true, double z_baro_top = 1050, double z_baro_bottom = 950);
-	static char *zambretti_name(long number);
+	static const char *zambretti_name(long number);
 	static long pressure_trend(double hourly_pressure_change_in_hPa);
-	static char *pressure_trend_name(long change);
+	static const char *pressure_trend_name(long change);
 	static long phase_of_moon(long year, long month, long day);
 };
 

@@ -44,7 +44,7 @@ return m_per_second * 1.943844492457398;
 	WIND_DIRECTION()
 	----------------
 */
-char *wind_direction(double angle)
+const char *wind_direction(double angle)
 {
 switch ((int)(angle / 22.5))
 	{
@@ -95,7 +95,9 @@ uint8_t year, month, day, hour, minute;
 int sun_hour, sun_minute;
 int daylight_savings, barometric_state;
 long z_number;
-TIME_ZONE_INFORMATION timezone_information;
+#ifdef _MSC_VER
+	TIME_ZONE_INFORMATION timezone_information;
+#endif
 usb_weather_fixed_block_1080 *fixed_block;
 usb_weather_reading *deltas;
 
@@ -371,7 +373,7 @@ puts("</html>");
 	RENDER_HTML_GRAPH()
 	-------------------
 */
-void render_html_graph(char *name, char *title, char *x_title, char *y_title, long elements, long *timeline, double *data)
+void render_html_graph(const char *name, const char *title, const char *x_title, const char *y_title, long elements, long *timeline, double *data)
 {
 long current;
 

@@ -19,7 +19,10 @@
 	#include <linux/hidraw.h>
 	#include <sys/ioctl.h>
 	#include <fcntl.h>	
+	#include <stdio.h>
+	#include <unistd.h>
 #endif
+#include <string.h>
 
 /*
 	USB_WEATHER::USB_WEATHER()
@@ -38,7 +41,13 @@ fixed_block = NULL;
 usb_weather::~usb_weather()
 {
 if (hDevice != INVALID_HANDLE_VALUE)
-	CloseHandle(hDevice);
+	{
+	#ifdef _MSC_VER
+		CloseHandle(hDevice);
+	#else
+		close(hDevice);
+	#endif
+	}
 delete fixed_block;
 }
 
@@ -175,7 +184,7 @@ delete fixed_block;
 	uint8_t *into;
 
 	into = (uint8_t *)buffer;
-	remaining = bytes;
+	remaining = bytes_to_read;
 	while (remaining > 0)
 		{
 		if ((got = read(hDevice, into, remaining)) < 0)
@@ -198,7 +207,7 @@ delete fixed_block;
 	*/
 	long HidD_SetOutputReport(HANDLE hDevice, void *message, DWORD message_length)
 	{
-	return write(hDevice, message, message_length) == message_length);
+	return write(hDevice, message, message_length) == message_length;
 	}
 
 #endif
@@ -457,7 +466,7 @@ now->gust_windspeed -= previous->gust_windspeed;
 now->wind_direction -= (int)previous->wind_direction % 360;
 now->total_rain -= previous->total_rain;
 now->rain_counter_overflow = rain_overflow;
-now->lost_communications = max_reads < 0;					// technically... did we or did we not manage to read an hour's worth
+now->lost_communications = max_reads < 0;					// not lost_communications, more "did we manage to read an hour's worth?"
 
 return now;
 }
