@@ -37,7 +37,7 @@ public:
 	uint8_t lost_communications;		// true or false
 
 public:
-	void text_render(char *title = "");
+	void text_render(const char *title = "");
 } ;
 
 #endif /* USB_WEATHER_READING_H_ */

@@ -8,12 +8,15 @@
 #include "usb_weather_message.h"
 #include "usb_weather_reading_raw.h"
 
-extern "C"
-{
-#include <hidsdi.h>
-#include <hidpi.h>
-#include <SetupAPI.h>
-}
+#ifdef _MSC_VER
+	extern "C"
+	{
+	#include <hidsdi.h>
+	#include <hidpi.h>
+	#include <SetupAPI.h>
+	}
+#else
+#endif
 
 /*
 	USB_WEATHER::USB_WEATHER()

@@ -7,11 +7,16 @@
 #ifndef USB_WEATHER_H_
 #define USB_WEATHER_H_
 
-#include <Windows.h>
+#ifdef _MSC_VER
+	#include <Windows.h>
+#else
+	typedef long long HANDLE;
+#endif
 
 #include "fundamental_types.h"
 #include "usb_weather_fixed_block_1080.h"
 #include "usb_weather_reading.h"
+
 /*
 	class USB_WEATHER
 	-----------------

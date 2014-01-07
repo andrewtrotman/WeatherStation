@@ -113,9 +113,9 @@ public:
 	usb_weather_datetime maximum_rain_total_when;
 
 private:
-	void print_data(char *feature, char *units, double min, usb_weather_datetime min_when, double alarm_low, double max, usb_weather_datetime max_when, double alarm_high, char *spaces = "");
-	void print_data(char *feature, char *units, double value,  usb_weather_datetime when);
-	char *toggle(uint16_t value, uint16_t bit);
+	void print_data(const char *feature, const char *units, double min, usb_weather_datetime min_when, double alarm_low, double max, usb_weather_datetime max_when, double alarm_high, const char *spaces = "");
+	void print_data(const char *feature, const char *units, double value,  usb_weather_datetime when);
+	const char *toggle(uint16_t value, uint16_t bit);
 	
 public:
 	void text_render(void);

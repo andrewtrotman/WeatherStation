@@ -11,7 +11,7 @@
 	DUMP_WEATHER()
 	--------------
 */
-void usb_weather_reading::text_render(char *title)
+void usb_weather_reading::text_render(const char *title)
 {
 puts(title);
 

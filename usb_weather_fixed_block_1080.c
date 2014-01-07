@@ -11,7 +11,7 @@
 	USB_WEATHER_FIXED_BLOCK_1080::PRINT_DATA()
 	------------------------------------------
 */
-void usb_weather_fixed_block_1080::print_data(char *feature, char *units, double min, usb_weather_datetime min_when, double alarm_low, double max, usb_weather_datetime max_when, double alarm_high, char *spaces)
+void usb_weather_fixed_block_1080::print_data(const char *feature, const char *units, double min, usb_weather_datetime min_when, double alarm_low, double max, usb_weather_datetime max_when, double alarm_high, const char *spaces)
 {
 printf("Minimum %s   %s:%0.2f%s ", feature, spaces, min, units);
 min_when.text_render();
@@ -28,7 +28,7 @@ printf("Alarm %s high%s:%0.2f%s\n", feature, spaces, alarm_high, units);
 	USB_WEATHER_FIXED_BLOCK_1080::PRINT_DATA()
 	------------------------------------------
 */
-void usb_weather_fixed_block_1080::print_data(char *feature, char *units, double value,  usb_weather_datetime when)
+void usb_weather_fixed_block_1080::print_data(const char *feature, const char *units, double value,  usb_weather_datetime when)
 {
 printf("%s:%0.2f%s ", feature, value, units);
 when.text_render();
@@ -39,10 +39,10 @@ printf("\n");
 	USB_WEATHER_FIXED_BLOCK_1080::TOGGLE()
 	--------------------------------------
 */
-char *usb_weather_fixed_block_1080::toggle(uint16_t value, uint16_t bit)
+const char *usb_weather_fixed_block_1080::toggle(uint16_t value, uint16_t bit)
 {
-static char *on = "On";
-static char *off = "Off";
+static const char *on = "On";
+static const char *off = "Off";
 
 return (value & 1 << bit) ? on : off;
 }
