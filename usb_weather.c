@@ -16,6 +16,9 @@
 	#include <SetupAPI.h>
 	}
 #else
+	#include <linux/hidraw.h>
+	#include <sys/ioctl.h>
+	#include <fcntl.h>	
 #endif
 
 /*
@@ -39,94 +42,166 @@ if (hDevice != INVALID_HANDLE_VALUE)
 delete fixed_block;
 }
 
-/*
-	USB_WEATHER::CONNECT()
-	----------------------
-*/
-uint32_t usb_weather::connect(uint32_t vid, uint32_t pid)
-{
-GUID guid;
-HDEVINFO hDevInfo;
-SP_DEVICE_INTERFACE_DATA devInfoData;
-long current;
-DWORD required;
-SP_DEVICE_INTERFACE_DETAIL_DATA *detail_data = NULL;
-HIDD_ATTRIBUTES attributes;
-long found = false;
-
-/*
-	Get the GUID of the Windows HID class so that we can identify HID devices
-*/
-HidD_GetHidGuid(&guid);
-
-/*
-	Get the list of HID devices
-*/
-if ((hDevInfo = SetupDiGetClassDevs(&guid, NULL, NULL, DIGCF_PRESENT | DIGCF_INTERFACEDEVICE)) == INVALID_HANDLE_VALUE)
-	return 1;		// puts("SetupDiGetClassDevs() failure - can't connect to weather station");
-
-/*
-	Iterate through the list of HID devices
-*/
-devInfoData.cbSize = sizeof(devInfoData);
-for (current = 0; SetupDiEnumDeviceInterfaces(hDevInfo, 0, &guid, current, &devInfoData); current++)
+#ifdef _MSC_VER
+	/*
+		USB_WEATHER::CONNECT()
+		----------------------
+	*/
+	uint32_t usb_weather::connect(uint32_t vid, uint32_t pid)
 	{
-	required = 0;
-	/*
-		Call SetupDiGetDeviceInterfaceDetail() to get the length of the device name then call it again to get the name itself
-	*/
-	SetupDiGetDeviceInterfaceDetail(hDevInfo, &devInfoData, NULL, 0, &required, NULL);
+	GUID guid;
+	HDEVINFO hDevInfo;
+	SP_DEVICE_INTERFACE_DATA devInfoData;
+	long current;
+	DWORD required;
+	SP_DEVICE_INTERFACE_DETAIL_DATA *detail_data = NULL;
+	HIDD_ATTRIBUTES attributes;
+	long found = false;
 
 	/*
-		Allocate space for the name of the HID device
+		Get the GUID of the Windows HID class so that we can identify HID devices
 	*/
-	free(detail_data);
-	detail_data = (PSP_DEVICE_INTERFACE_DETAIL_DATA)malloc(required);
-	detail_data->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);	// should be 5
+	HidD_GetHidGuid(&guid);
 
 	/*
-		Get the name and details of the HID device
+		Get the list of HID devices
 	*/
-	if (SetupDiGetDeviceInterfaceDetail(hDevInfo, &devInfoData, detail_data, required, NULL, NULL))
+	if ((hDevInfo = SetupDiGetClassDevs(&guid, NULL, NULL, DIGCF_PRESENT | DIGCF_INTERFACEDEVICE)) == INVALID_HANDLE_VALUE)
+		return 1;		// puts("SetupDiGetClassDevs() failure - can't connect to weather station");
+
+	/*
+		Iterate through the list of HID devices
+	*/
+	devInfoData.cbSize = sizeof(devInfoData);
+	for (current = 0; SetupDiEnumDeviceInterfaces(hDevInfo, 0, &guid, current, &devInfoData); current++)
 		{
-		if ((hDevice = CreateFile(detail_data->DevicePath, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL)) != INVALID_HANDLE_VALUE)
-			{
-			COMMTIMEOUTS timeout = {1000, 0, 1000, 0, 1000};		// reads and writes timeout in one second
+		required = 0;
+		/*
+			Call SetupDiGetDeviceInterfaceDetail() to get the length of the device name then call it again to get the name itself
+		*/
+		SetupDiGetDeviceInterfaceDetail(hDevInfo, &devInfoData, NULL, 0, &required, NULL);
 
-			SetCommTimeouts(hDevice, &timeout);
-			attributes.Size = sizeof(attributes);
-			HidD_GetAttributes(hDevice, &attributes);
-			if (attributes.VendorID == vid && attributes.ProductID == pid)
+		/*
+			Allocate space for the name of the HID device
+		*/
+		free(detail_data);
+		detail_data = (PSP_DEVICE_INTERFACE_DETAIL_DATA)malloc(required);
+		detail_data->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);	// should be 5
+
+		/*
+			Get the name and details of the HID device
+		*/
+		if (SetupDiGetDeviceInterfaceDetail(hDevInfo, &devInfoData, detail_data, required, NULL, NULL))
+			{
+			if ((hDevice = CreateFile(detail_data->DevicePath, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL)) != INVALID_HANDLE_VALUE)
 				{
-				HidD_FlushQueue(hDevice);
-				if (read_fixed_block() != NULL)
+				COMMTIMEOUTS timeout = {1000, 0, 1000, 0, 1000};		// reads and writes timeout in one second
+
+				SetCommTimeouts(hDevice, &timeout);
+				attributes.Size = sizeof(attributes);
+				HidD_GetAttributes(hDevice, &attributes);
+				if (attributes.VendorID == vid && attributes.ProductID == pid)
 					{
-					found = true;
-					break;
+					HidD_FlushQueue(hDevice);
+					if (read_fixed_block() != NULL)
+						{
+						found = true;
+						break;
+						}
 					}
+				CloseHandle(hDevice);
 				}
-			CloseHandle(hDevice);
 			}
 		}
+
+	/*
+		Clean up the memory allocated when we got the device list
+	*/
+	SetupDiDestroyDeviceInfoList(hDevInfo);
+	free(detail_data);
+
+	/*
+		Return an error code (or 0 for success)
+	*/
+	if (found)
+		return 0;
+	else
+		{
+		hDevice = INVALID_HANDLE_VALUE;
+		return 2;	// puts("Cannot find an attached weather station");
+		}
 	}
+#else
+	/*
+		Linux versions of the USB methods
+	*/
 
-/*
-	Clean up the memory allocated when we got the device list
-*/
-SetupDiDestroyDeviceInfoList(hDevInfo);
-free(detail_data);
-
-/*
-	Return an error code (or 0 for success)
-*/
-if (found)
-	return 0;
-else
+	/*
+		USB_WEATHER::CONNECT()
+		----------------------
+	*/
+	uint32_t usb_weather::connect(uint32_t vid, uint32_t pid)
 	{
+	char message_buffer[32];
+	struct hidraw_devinfo device;
+	long id;
+	int file;
+
 	hDevice = INVALID_HANDLE_VALUE;
-	return 2;	// puts("Cannot find an attached weather station");
+	for (id = 0; id < 1024; id++)
+		{
+		sprintf(message_buffer, "/dev/hidraw%ld", id);
+		if ((file = open(message_buffer, O_RDWR)) == -1)
+			return 1;		// can't connect to the weather station
+		else if (ioctl(file, HIDIOCGRAWINFO, &device) >= 0 && (uint16_t)device.vendor == (uint16_t)vid && (uint16_t)device.product == (uint16_t)pid)
+			{
+			hDevice = file;
+			return 0;
+			}
+		else
+			close(file);
+		}
+	return 2;				// Can't find an attached weather station
 	}
-}
+
+
+	/*
+		READFILE()
+		----------
+	*/
+	long ReadFile(HANDLE hDevice, void *buffer, DWORD bytes_to_read, DWORD *bytes_read, void *ignore)
+	{
+	DWORD remaining, got;
+	uint8_t *into;
+
+	into = (uint8_t *)buffer;
+	remaining = bytes;
+	while (remaining > 0)
+		{
+		if ((got = read(hDevice, into, remaining)) < 0)
+			{
+			*bytes_read = bytes_to_read;
+			return false;
+			}
+
+		into += got;
+		remaining -= got;
+		}
+
+	*bytes_read = bytes_to_read;
+	return true;
+	}
+
+	/*
+		HIDD_SETOUTPUTREPORT()
+		----------------------
+	*/
+	long HidD_SetOutputReport(HANDLE hDevice, void *message, DWORD message_length)
+	{
+	return write(hDevice, message, message_length) == message_length);
+	}
+
+#endif
 
 /*
 	USB_WEATHER::READ()

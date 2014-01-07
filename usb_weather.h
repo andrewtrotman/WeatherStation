@@ -10,7 +10,9 @@
 #ifdef _MSC_VER
 	#include <Windows.h>
 #else
-	typedef long long HANDLE;
+	typedef int HANDLE;
+	typedef long DWORD;
+	#define INVALID_HANDLE_VALUE -1;
 #endif
 
 #include "fundamental_types.h"
