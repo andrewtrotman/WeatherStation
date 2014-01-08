@@ -25,33 +25,18 @@
 #include <string.h>
 
 /*
-	INTEL_TO_ARM()
-	--------------
+	DECODE()
+	--------
+	Take a two byte integer read from the base unit and turn it into a uint16_t by ensuring the
+	correct byte order decoding is done
 */
-uint32_t intel_to_arm(uint32_t value)
+inline uint16_t decode(uint16_t &value)
 {
-union i_to_b
-{
-uint32_t number;
-struct { unsigned char one, two, three, four; } byte;
-} in, out;
-
-in.number = value;
-out.byte.one = in.byte.four;
-out.byte.two = in.byte.three;
-out.byte.three = in.byte.two;
-out.byte.four = in.byte.one;
-
-return out.number;
-}
-
-/*
-	ARM_TO_INTEL()
-	--------------
-*/
-uint32_t arm_to_intel(uint32_t value)
-{
-return intel_to_arm(value);			// call intel_to_arm() as the result is the same (endian "swap");
+#ifdef __arm__
+	return (value >> 8) | (value << 8);
+#else
+	return value;
+#endif
 }
 
 /*
@@ -283,7 +268,7 @@ if (HidD_SetOutputReport(hDevice, &message, sizeof(message)))
 	while (remaining > 0)
 		{
 #ifdef _MSC_VER
-		dwBytesToRead = sizeof(recieve_buffer);
+		dwBytesToRead = bytes;
 #else
 		dwBytesToRead = remaining;
 #endif
@@ -291,17 +276,8 @@ if (HidD_SetOutputReport(hDevice, &message, sizeof(message)))
 			return 0;
 
 		dwBytes -= 1;	// skip over the report ID
-#ifdef _MSC_VER
-		memcpy(into, recieve_buffer + 1, (size_t)(dwBytes > remaining ? remaining : dwBytes));
-#else
 		memcpy(into, recieve_buffer + 1, (size_t)dwBytes);
-#endif
-
-#ifdef _MSC_VER
-		into += dwBytes > remaining ? remaining : dwBytes;
-#else
 		into += dwBytes;
-#endif
 		remaining -= dwBytes;
 		}
 	return bytes;		// success
@@ -331,14 +307,14 @@ if (read(address, (uint8_t*)&buffer) == 0)
 answer = new usb_weather_reading;
 answer->delay = buffer.delay;
 answer->indoor_humidity = buffer.indoor_humidity;
-answer->indoor_temperature = buffer.indoor_temperature / 10.0;
+answer->indoor_temperature = decode(buffer.indoor_temperature) / 10.0;
 answer->outdoor_humidity = buffer.outdoor_humidity;
-answer->outdoor_temperature = buffer.outdoor_temperature / 10.0;
-answer->absolute_pressure = buffer.absolute_pressure / 10.0;
+answer->outdoor_temperature = decode(buffer.outdoor_temperature) / 10.0;
+answer->absolute_pressure = decode(buffer.absolute_pressure) / 10.0;
 answer->average_windspeed = (buffer.average_windspeed_low | (buffer.windspeed_high & 0x0F)) / 10.0;
 answer->gust_windspeed = (buffer.gust_windspeed_low | ((buffer.windspeed_high >> 4) & 0x0F)) / 10.0;
 answer->wind_direction = buffer.wind_direction * 22.5;
-answer->total_rain = buffer.total_rain * 0.3;
+answer->total_rain = decode(buffer.total_rain) * 0.3;
 answer->rain_counter_overflow = buffer.status & 0x80 ? true : false;
 answer->lost_communications = buffer.status & 0x40 ? true : false;
 
