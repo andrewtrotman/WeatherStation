@@ -20,7 +20,7 @@ public:
 	uint8_t zero;
 	uint8_t report_id;						// 0xA1 to read from device
 	uint8_t address_high;					// msb of address
-	uint8_t address_low;					// lbs of address
+	uint8_t address_low;						// lsb of address
 	uint8_t end_of_message;					// 0x20
 	uint8_t aux_report_id;					// 0xA1
 	uint8_t aux_address_high;					// msb of address

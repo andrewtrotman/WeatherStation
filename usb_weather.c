@@ -25,6 +25,36 @@
 #include <string.h>
 
 /*
+	INTEL_TO_ARM()
+	--------------
+*/
+uint32_t intel_to_arm(uint32_t value)
+{
+union i_to_b
+{
+uint32_t number;
+struct { unsigned char one, two, three, four; } byte;
+} in, out;
+
+in.number = value;
+out.byte.one = in.byte.four;
+out.byte.two = in.byte.three;
+out.byte.three = in.byte.two;
+out.byte.four = in.byte.one;
+
+return out.number;
+}
+
+/*
+	ARM_TO_INTEL()
+	--------------
+*/
+uint32_t arm_to_intel(uint32_t value)
+{
+return intel_to_arm(value);			// call intel_to_arm() as the result is the same (endian "swap");
+}
+
+/*
 	USB_WEATHER::USB_WEATHER()
 	--------------------------
 */
@@ -174,7 +204,7 @@ delete fixed_block;
 	}
 
 
-	int16_t hid_report_number = -1;
+	uint8_t hid_report_number = 0;
 
 	/*
 		READFILE()
@@ -186,16 +216,13 @@ delete fixed_block;
 	uint8_t *into;
 
 	into = (uint8_t *)buffer;
-	*bytes_read = 0;
-	if (hid_report_number == 0)
-		{
-		/*
-			If we don't have report numbers then we need to fake compatibility with windows by putting one there
-		*/
-		*into++ = 0;
-		hid_report_number = -1;
-		*bytes_read += 1;
-		}
+
+	/*
+		For compatibility with Windows we write the report number at the start and return one too many characters
+	*/
+	*into++ = hid_report_number;
+	*bytes_read = 1;
+
 	remaining = bytes_to_read;
 	while (remaining > 0)
 		{
@@ -232,7 +259,7 @@ delete fixed_block;
 uint32_t usb_weather::read(uint16_t address, void *result)
 {
 uint32_t bytes = 32;
-unsigned char recieve_buffer[32];
+unsigned char recieve_buffer[64];
 uint8_t *into = (uint8_t *)result;
 usb_weather_message message;
 DWORD dwBytes = 0, dwBytesToRead;
@@ -255,14 +282,26 @@ if (HidD_SetOutputReport(hDevice, &message, sizeof(message)))
 	remaining = bytes;
 	while (remaining > 0)
 		{
+#ifdef _MSC_VER
 		dwBytesToRead = sizeof(recieve_buffer);
+#else
+		dwBytesToRead = remaining;
+#endif
 		if (!ReadFile(hDevice, recieve_buffer, dwBytesToRead, &dwBytes, NULL))
 			return 0;
 
 		dwBytes -= 1;	// skip over the report ID
+#ifdef _MSC_VER
 		memcpy(into, recieve_buffer + 1, (size_t)(dwBytes > remaining ? remaining : dwBytes));
+#else
+		memcpy(into, recieve_buffer + 1, (size_t)dwBytes);
+#endif
 
+#ifdef _MSC_VER
 		into += dwBytes > remaining ? remaining : dwBytes;
+#else
+		into += dwBytes;
+#endif
 		remaining -= dwBytes;
 		}
 	return bytes;		// success
