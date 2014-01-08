@@ -174,6 +174,8 @@ delete fixed_block;
 	}
 
 
+	int16_t hid_report_number = -1;
+
 	/*
 		READFILE()
 		----------
@@ -184,12 +186,22 @@ delete fixed_block;
 	uint8_t *into;
 
 	into = (uint8_t *)buffer;
+	*bytes_read = 0;
+	if (hid_report_number == 0)
+		{
+		/*
+			If we don't have report numbers then we need to fake compatibility with windows by putting one there
+		*/
+		*into++ = 0;
+		hid_report_number = -1;
+		*bytes_read += 1;
+		}
 	remaining = bytes_to_read;
 	while (remaining > 0)
 		{
 		if ((got = read(hDevice, into, remaining)) < 0)
 			{
-			*bytes_read = bytes_to_read;
+			*bytes_read += bytes_to_read;
 			return false;
 			}
 
@@ -197,7 +209,7 @@ delete fixed_block;
 		remaining -= got;
 		}
 
-	*bytes_read = bytes_to_read;
+	*bytes_read += bytes_to_read;
 	return true;
 	}
 
@@ -207,6 +219,7 @@ delete fixed_block;
 	*/
 	long HidD_SetOutputReport(HANDLE hDevice, void *message, DWORD message_length)
 	{
+	hid_report_number = *(uint8_t *)message;
 	return write(hDevice, message, message_length) == message_length;
 	}
 
