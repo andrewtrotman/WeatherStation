@@ -30,21 +30,11 @@ double BAROMETRIC_STEADY_THRESHOLD = 1;
 #define USB_WEATHER_VID 0x1941			// Dream Link (in my case DIGITECH)
 #define USB_WEATHER_PID 0x8021			// WH1080 Weather Station / USB Missile Launcher (in my case USB Wireless Weather Station)
 
-
 /*
-	KNOTS()
-	-------
+	WIND_DIRECTION_NAME()
+	---------------------
 */
-double knots(double m_per_second)
-{
-return m_per_second * 1.943844492457398;
-}
-
-/*
-	WIND_DIRECTION()
-	----------------
-*/
-const char *wind_direction(double angle)
+const char *wind_direction_name(double angle)
 {
 switch ((int)(angle / 22.5))
 	{
@@ -90,19 +80,20 @@ return "No Wind";
 */
 usb_weather_reading *render_current_readings_iphone(usb_weather *station)
 {
-usb_weather_reading *readings, *previous;
+static long z_to_font[] = {49, 49, 49, 65, 72, 65, 72, 76, 76, 72, 78, 86, 86, 84, 80, 76, 109, 71, 71, 83, 87, 80, 85, 81, 83, 81, 122};
+usb_weather_reading *readings;
 uint8_t year, month, day, hour, minute;
 int sun_hour, sun_minute;
 int daylight_savings, barometric_state;
 long z_number;
+usb_weather_fixed_block_1080 *fixed_block;
+usb_weather_reading *deltas;
+double wind_direction, barometric_delta, dew_point;
 #ifdef _MSC_VER
 	TIME_ZONE_INFORMATION timezone_information;
 #endif
-usb_weather_fixed_block_1080 *fixed_block;
-usb_weather_reading *deltas;
 
 readings = station->read_current_readings();
-previous = station->read_previous_readings();
 deltas = station->read_hourly_delta();				// hourly deltas
 
 if (readings == NULL)
@@ -238,63 +229,59 @@ puts("<tr><td align=center>");
 fixed_block->current_time.text_render();
 puts("</b><br></td></tr>");
 
-/*
-	Wind
-*/
-printf("<tr><td align=center class=\"huge\">%s</td></tr>", wind_direction(readings->wind_direction));
-printf("<tr><td align=center class=\"medium\">%0.2fKn gusts to %0.2fKn (%s)</td></tr>", knots(readings->average_windspeed), knots(readings->gust_windspeed), weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
-puts("<tr><td class=\"space\">&nbsp;</td></tr>");
+if (!readings->lost_communications)
+	{
+	/*
+		Wind
+	*/
+	printf("<tr><td align=center class=\"huge\">%s</td></tr>", wind_direction_name(readings->wind_direction));
+	printf("<tr><td align=center class=\"medium\">%0.2fKn gusts to %0.2fKn (%s)</td></tr>", weather_math::knots(readings->average_windspeed), weather_math::knots(readings->gust_windspeed), weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
+	puts("<tr><td class=\"space\">&nbsp;</td></tr>");
 
-/*
-	Outdoor temperature, humidity, rainfall
-*/
-double apparent_temperature = weather_math::apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
-//double australian_apparent_temperature = weather_math::australian_apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
+	/*
+		Outdoor temperature, humidity, rainfall
+	*/
+	double apparent_temperature = weather_math::apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
+	//double australian_apparent_temperature = weather_math::australian_apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
 
-puts("<tr><td align=center><center><table cellpadding=0 cellspacing=0 border=0><tr><td align=right class=\"huge\">");
-printf("<span class=\"arrowfont\">%s</span>%0.2f", deltas->outdoor_temperature > 0 ? "&uarr;" : deltas->outdoor_temperature < 0 ? "&darr;" : "", readings->outdoor_temperature);
-printf("&deg;C&nbsp;</td><td align=left class=\"medium\">");
-printf("%0.2f", readings->outdoor_humidity);
-puts("%<br>");
-printf("%0.2f", readings->total_rain);
-puts("mm</td></tr>");
-printf("<tr><td><span class=\"medium\"><center>(Feels like:%0.0f&deg;C)<center></span></td><td></td></tr>", apparent_temperature);
-puts("</table></center></td></tr>");
+	puts("<tr><td align=center><center><table cellpadding=0 cellspacing=0 border=0><tr><td align=right class=\"huge\">");
+	printf("<span class=\"arrowfont\">%s</span>%0.2f", deltas->outdoor_temperature > 0 ? "&uarr;" : deltas->outdoor_temperature < 0 ? "&darr;" : "", readings->outdoor_temperature);
+	printf("&deg;C&nbsp;</td><td align=left class=\"medium\">");
+	printf("%0.2f", readings->outdoor_humidity);
+	puts("%<br>");
+	printf("%0.2f", readings->total_rain);
+	puts("mm</td></tr>");
+	printf("<tr><td><span class=\"medium\"><center>(Feels like:%0.0f&deg;C)<center></span></td><td></td></tr>", apparent_temperature);
+	puts("</table></center></td></tr>");
+	}
 /*
 	Pressure and Prediction
 */
-long z_to_font[] = {49, 49, 49, 65, 72, 65, 72, 76, 76, 72, 78, 86, 86, 84, 80, 76, 109, 71, 71, 83, 87, 80, 85, 81, 83, 81, 122};
-
-#define PYWWS_VERSION
-#ifdef PYWWS_VERSION
-	double wind_direction = (readings->average_windspeed < 0.3) ? weather_math::NO_WIND : readings->wind_direction / 22.5;
-	double barometric_delta = deltas->absolute_pressure / 3;
-	z_number = weather_math::zambretti_pywws(readings->absolute_pressure, month, wind_direction, barometric_delta, false);
-#else
-	if (fabs(readings->absolute_pressure - previous->absolute_pressure) <= BAROMETRIC_STEADY_THRESHOLD)
-		barometric_state = weather_math::STEADY;
-	else if (readings->absolute_pressure > previous->absolute_pressure)
-		barometric_state = weather_math::RISE;
-	else
-		barometric_state = weather_math::FALL;
-	z_number = weather_math::zambretti(readings->absolute_pressure, month, readings->wind_direction / 22.5, barometric_state, false);
-#endif
+if (readings->lost_communications)
+	wind_direction = weather_math::NO_WIND;
+else
+	wind_direction = (readings->average_windspeed < 0.3) ? weather_math::NO_WIND : readings->wind_direction / 22.5;
+barometric_delta = deltas->absolute_pressure / 3;
+z_number = weather_math::zambretti_pywws(readings->absolute_pressure, month, wind_direction, barometric_delta, false);
 
 printf("<tr><td align=center class=\"megahuge\">&#%d;</td></tr>", z_to_font[z_number]);
 
-#ifdef PYWWS_VERSION
-	int trend = weather_math::pressure_trend(deltas->absolute_pressure);
-	printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%*.*s</span>%0.2fhPa (%s)</td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", readings->absolute_pressure, weather_math::zambretti_name(z_number));
-#else
-	printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%s</span>%0.2fhPa (%s)</td></tr>", barometric_state == weather_math::RISE ? "&uarr;" : barometric_state == weather_math::STEADY ? "&bull;" : "&darr;", readings->absolute_pressure, weather_math::zambretti_name(z_number));
-#endif
+int trend = weather_math::pressure_trend(deltas->absolute_pressure);
+printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%*.*s</span>%0.2fhPa (%s)</td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", readings->absolute_pressure, weather_math::zambretti_name(z_number));
 printf("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
 
 /*
 	Inside temperature and humidity
 */
-double dew_point = weather_math::dewpoint(readings->outdoor_temperature, readings->outdoor_humidity);
-printf("<tr><td align=center class=\"medium\">(Dewpoint:%0.0f&deg;C, Inside:%0.0f&deg;C %0.0f%%) <span class=symbol><span class=huge><a href=%s>*</a></span></span></td></tr>", dew_point, readings->indoor_temperature, readings->indoor_humidity, getenv("SCRIPT_NAME"));
+printf("<tr><td align=center class=\"medium\">(");
+
+if (!readings->lost_communications)
+	{
+	dew_point = weather_math::dewpoint(readings->outdoor_temperature, readings->outdoor_humidity);
+	printf("Dewpoint:%0.0f&deg;C, ", dew_point);
+	}
+
+printf("Inside:%0.0f&deg;C %0.0f%%) <span class=symbol><span class=huge><a href=%s>*</a></span></span></td></tr>", readings->indoor_temperature, readings->indoor_humidity, getenv("SCRIPT_NAME"));
 puts("</table>");
 
 
@@ -482,7 +469,7 @@ puts("chart.draw(pressure, pressure_options);");
 	Wind
 */
 printf("var wind = google.visualization.arrayToDataTable([['Label', 'Value']");
-printf(", ['Wind kn', %0.2f]", knots(readings->average_windspeed));
+printf(", ['Wind kn', %0.2f]", weather_math::knots(readings->average_windspeed));
 puts("]);");
 
 puts("var wind_options =");
@@ -490,8 +477,8 @@ puts("	{");
 printf("	width: %ld,\n", width);
 printf("	height: %ld,\n", height);
 puts("	min: 0,");
-printf("	redFrom: %0.2f,\n", knots(readings->average_windspeed));
-printf("	redTo: %0.2f\n", knots(readings->gust_windspeed));
+printf("	redFrom: %0.2f,\n", weather_math::knots(readings->average_windspeed));
+printf("	redTo: %0.2f\n", weather_math::knots(readings->gust_windspeed));
 puts("	};");
 puts("var chart = new google.visualization.Gauge(document.getElementById('current_wind'));");
 puts("chart.draw(wind, wind_options);");
@@ -597,12 +584,12 @@ render_html_graph("outdoor_humidity", "Outdoor Humidity", "Minutes Ago", "Percen
 
 for (current = readings - 1; current >= 0; current--)
 	if (!history[current]->lost_communications)
-		data[current] = knots(history[current]->average_windspeed);
+		data[current] = weather_math::knots(history[current]->average_windspeed);
 render_html_graph("windspeed", "Wind Speed", "Minutes Ago", "Knots", readings, timeline, data);
 
 for (current = readings - 1; current >= 0; current--)
 	if (!history[current]->lost_communications)
-		data[current] = knots(history[current]->gust_windspeed);
+		data[current] = weather_math::knots(history[current]->gust_windspeed);
 render_html_graph("gust", "Wind Gust", "Minutes Ago", "Knots", readings, timeline, data);
 
 /*

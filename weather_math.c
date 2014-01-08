@@ -27,6 +27,15 @@ return (a < b) ? a : b;
 }
 
 /*
+	WEATHER_MATH::KNOTS()
+	---------------------
+*/
+double weather_math::knots(double m_per_second)
+{
+return m_per_second * 1.943844492457398;
+}
+
+/*
 	WEATHER_MATH::C_TO_F()
 	----------------------
 */

@@ -400,11 +400,15 @@ return read_reading(fixed_block->current_position);
 usb_weather_reading *usb_weather::read_previous_readings(void)
 {
 uint16_t address;
+
 /*
 	Make sure we have the address we need
 */
 if (fixed_block == NULL)
 	return NULL;
+
+if (fixed_block->data_count <= 1)
+	return NULL;		// Can't read the previous reading because there isn't one!
 
 /*
 	Get the reading
@@ -428,13 +432,13 @@ uint8_t rain_overflow, finish;
 
 address = fixed_block->current_position;
 max_reads = fixed_block->data_count;
-if ((now = read_reading(address)) == NULL)
+if ((previous = now = read_reading(address)) == NULL)
 	return NULL;
 
 rain_overflow = now->rain_counter_overflow;
 time = now->delay;
 max_reads--;
-finish = max_reads < 0;
+finish = max_reads <= 0;
 while (!finish)
 	{
 	if ((address = fixed_block->current_position - 16) < 0x100)
@@ -447,7 +451,7 @@ while (!finish)
 	rain_overflow = rain_overflow || previous->rain_counter_overflow;
 	time += previous->delay;
 	max_reads--;
-	if (max_reads < 0)
+	if (max_reads <= 0)
 		finish = true;
 	if (time > 60 && !previous->lost_communications)
 		finish = true;

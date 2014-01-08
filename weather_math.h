@@ -44,6 +44,8 @@ public:
 	static long pressure_trend(double hourly_pressure_change_in_hPa);
 	static const char *pressure_trend_name(long change);
 	static long phase_of_moon(long year, long month, long day);
+	static double knots(double m_per_second);
 };
 
 #endif /* WEATHER_MATH_H_ */
+
