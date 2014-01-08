@@ -29,10 +29,12 @@
 	--------
 	Take a two byte integer read from the base unit and turn it into a uint16_t by ensuring the
 	correct byte order decoding is done
+
+	The Raspberry Pi and Intel are both Little Endian so no decoding is necesary!
 */
 inline uint16_t decode(uint16_t &value)
 {
-#ifdef __arm__
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 	return (value >> 8) | (value << 8);
 #else
 	return value;
