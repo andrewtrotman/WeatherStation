@@ -21,8 +21,11 @@
 #define MODE_PC 2
 
 static const int mode = MODE_IPHONE;
-double lat = -45.8667;
-double lng = 170.5000;
+
+double latitude = -45.8667;
+double longitude = 170.5000;
+double height_above_sea_level_in_m = 10;
+
 double BAROMETRIC_STEADY_THRESHOLD = 1;
 /*
 	These are the USB VID and PID of the weather station I've got
@@ -30,49 +33,6 @@ double BAROMETRIC_STEADY_THRESHOLD = 1;
 #define USB_WEATHER_VID 0x1941			// Dream Link (in my case DIGITECH)
 #define USB_WEATHER_PID 0x8021			// WH1080 Weather Station / USB Missile Launcher (in my case USB Wireless Weather Station)
 
-/*
-	WIND_DIRECTION_NAME()
-	---------------------
-*/
-const char *wind_direction_name(double angle)
-{
-switch ((int)(angle / 22.5))
-	{
-	case 0:
-		return "Northerly";
-	case 1:
-		return "NNE";
-	case 2:
-		return "Northeasterly";
-	case 3:
-		return "ENE";
-	case 4:
-		return "Easterly";
-	case 5:
-		return "ESE";
-	case 6:
-		return "Southeasterly";
-	case 7:
-		return "SSE";
-	case 8:
-		return "Southerly";
-	case 9:
-		return "SSW";
-	case 10:
-		return "Southwesterly";
-	case 11:
-		return "WSW";
-	case 12:
-		return "Westerly";
-	case 13:
-		return "WNW";
-	case 14:
-		return "Northwesterly";
-	case 15:
-		return "NNW";
-	}
-return "No Wind";
-}
 
 /*
 	RENDER_CURRENT_READINGS_IPHONE()
@@ -209,13 +169,13 @@ puts("<table cellpadding=0 cellspacing=0 border=0 width=100%>");
 puts("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td align=left><span class=\"symbol\">7</span>");
 daylight_savings = weather_math::is_daylight_saving();
 fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
-weather_math::sunrise(&sun_hour, &sun_minute, year + 2000, month, day, lat, lng, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
+weather_math::sunrise(&sun_hour, &sun_minute, year + 2000, month, day, latitude, longitude, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
 printf("%d:%d", sun_hour, sun_minute);
 
 uint8_t moon_phase = (weather_math::phase_of_moon(2000 + year, month, day) / 29.0) * 26.0;
 printf("</td><td align=center><span class=\"moon\">%c</span></td><td align=right>", 'A' + moon_phase);
 
-weather_math::sunset(&sun_hour, &sun_minute, year + 2000, month, day, lat, lng, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
+weather_math::sunset(&sun_hour, &sun_minute, year + 2000, month, day, latitude, longitude, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
 printf(" %d:%d", sun_hour, sun_minute);
 puts("<span class=\"symbol\">8</span></td></tr></table></td></tr>");
 
@@ -231,7 +191,7 @@ if (!readings->lost_communications)
 	/*
 		Wind
 	*/
-	printf("<tr><td align=center class=\"huge\">%s</td></tr>", wind_direction_name(readings->wind_direction));
+	printf("<tr><td align=center class=\"huge\">%s</td></tr>", weather_math::wind_direction_name(readings->wind_direction));
 	printf("<tr><td align=center class=\"medium\">%0.2fKn gusts to %0.2fKn (%s)</td></tr>", weather_math::knots(readings->average_windspeed), weather_math::knots(readings->gust_windspeed), weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
 	puts("<tr><td class=\"space\">&nbsp;</td></tr>");
 
@@ -264,7 +224,8 @@ z_number = weather_math::zambretti_pywws(readings->absolute_pressure, month, win
 printf("<tr><td align=center class=\"megahuge\">&#%d;</td></tr>", z_to_font[z_number]);
 
 int trend = weather_math::pressure_trend(deltas->absolute_pressure);
-printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%*.*s</span>%0.2fhPa (%s)</td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", readings->absolute_pressure, weather_math::zambretti_name(z_number));
+double sealevel_pressure = weather_math::pressure_to_sea_level_pressure(readings->absolute_pressure, readings->outdoor_temperature, height_above_sea_level_in_m);
+printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%*.*s</span>%0.2fhPa (%0.2f hPa) (%s)</td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", sealevel_pressure, readings->absolute_pressure, weather_math::zambretti_name(z_number));
 printf("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
 
 /*
@@ -327,10 +288,10 @@ printf(" (%ld minutes ago)</font></b><br>", current->delay);
 daylight_savings = weather_math::is_daylight_saving();
 
 fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
-weather_math::sunrise(&sun_hour, &sun_minute, year + 2000, month, day, lat, lng, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
+weather_math::sunrise(&sun_hour, &sun_minute, year + 2000, month, day, latitude, longitude, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
 printf("<b><font size=-1>Sun Rise: %d:%d", sun_hour, sun_minute);
 
-weather_math::sunset(&sun_hour, &sun_minute, year + 2000, month, day, lat, lng, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
+weather_math::sunset(&sun_hour, &sun_minute, year + 2000, month, day, latitude, longitude, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
 printf(" Set: %d:%d</font></b><br>", sun_hour, sun_minute);
 
 puts("<table><tr>");

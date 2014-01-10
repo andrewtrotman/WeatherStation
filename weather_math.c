@@ -59,6 +59,15 @@ return (temperature_in_f - 32.0) * 5.0 / 9.0;
 }
 
 /*
+	WEATHER_MATH::C_TO_K()
+	----------------------
+*/
+double weather_math::c_to_k(double temperature_in_c)
+{
+return temperature_in_c + 273.15;
+}
+
+/*
 	WEATHER_MATH::DEWPOINT()
 	------------------------
 	from: http://wiki.crowe.co.nz/DewPoint%20Calculation.ashx
@@ -695,5 +704,73 @@ long weather_math::is_daylight_saving(void)
 	newtime = localtime(&long_time);
 	return newtime->tm_isdst > 0 ? true : false;		// zero = not DST, -ve is unknown
 #endif
+}
 
+/*
+	WEATHER_MATH::PRESSURE_TO_SEA_LEVEL_PRESSURE()
+	----------------------------------------------
+	see the Wikipedia article: Barometric Formula
+*/
+double weather_math::pressure_to_sea_level_pressure(double pressure_in_hpa, double temperature_in_c, double height_above_sea_level_in_m)
+{
+double P;
+double Pb = pressure_in_hpa;
+double Tb = c_to_k(temperature_in_c);
+double Lb = -0.0065;					// Standard temperature lapse rate -0.0065 (K/m) in ISA
+double h = height_above_sea_level_in_m;
+double hb = 11000;						// height of the layer above
+double R = 8.31432;					// Universal gas constant for air: 8.31432 N·m /(mol.K)
+double g0 = 9.80665;					// Gravitational acceleration (9.80665 m/s^2)
+double M = 0.0289644;					// Molar mass of Earth's air (0.0289644 kg/mol)
+
+if (Lb == 0)
+	P = Pb * exp((-g0 * M * (h -hb)) / (R * Tb));
+else
+	P = Pb * pow((Tb / (Tb + Lb * (h - hb))), (g0 * M) / (R * Lb));
+
+return P;
+}
+
+/*
+	WEATHER_MATH::WIND_DIRECTION_NAME()
+	-----------------------------------
+*/
+const char *weather_math::wind_direction_name(double angle)
+{
+switch ((int)(angle / 22.5))
+	{
+	case 0:
+		return "Northerly";
+	case 1:
+		return "NNE";
+	case 2:
+		return "Northeasterly";
+	case 3:
+		return "ENE";
+	case 4:
+		return "Easterly";
+	case 5:
+		return "ESE";
+	case 6:
+		return "Southeasterly";
+	case 7:
+		return "SSE";
+	case 8:
+		return "Southerly";
+	case 9:
+		return "SSW";
+	case 10:
+		return "Southwesterly";
+	case 11:
+		return "WSW";
+	case 12:
+		return "Westerly";
+	case 13:
+		return "WNW";
+	case 14:
+		return "Northwesterly";
+	case 15:
+		return "NNW";
+	}
+return "No Wind";
 }

@@ -29,6 +29,7 @@ public:
 	static void sunset(int *hour, int *min, int year, int month, int day, float lat, float lng, int localOffset, int daylightSavings);
 	static double c_to_f(double temperature_in_c);
 	static double f_to_c(double temperature_in_f);
+	static double weather_math::c_to_k(double temperature_in_c);
 	static double dewpoint(double temperature_in_c, double humidity);
 	static double windchill(double temperature_in_c, double windspeed_in_ms);
 	static double australian_apparent_temperature(double temperature_in_c, double humidity, double wind_in_ms);
@@ -46,6 +47,8 @@ public:
 	static long phase_of_moon(long year, long month, long day);
 	static double knots(double m_per_second);
 	static long is_daylight_saving(void);		// return true if humans are currently in daylight savings "mode"
+	static double pressure_to_sea_level_pressure(double pressure_in_hpa, double temperature_in_c, double height_above_sea_level_in_m);
+	static const char *wind_direction_name(double angle);
 };
 
 #endif /* WEATHER_MATH_H_ */
