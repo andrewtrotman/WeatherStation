@@ -89,9 +89,6 @@ long z_number;
 usb_weather_fixed_block_1080 *fixed_block;
 usb_weather_reading *deltas;
 double wind_direction, barometric_delta, dew_point;
-#ifdef _MSC_VER
-	TIME_ZONE_INFORMATION timezone_information;
-#endif
 
 readings = station->read_current_readings();
 deltas = station->read_hourly_delta();				// hourly deltas
@@ -210,7 +207,7 @@ puts("<table cellpadding=0 cellspacing=0 border=0 width=100%>");
 	Sunrise, Moon, and Sunset
 */
 puts("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td align=left><span class=\"symbol\">7</span>");
-daylight_savings = (GetTimeZoneInformation(&timezone_information) == TIME_ZONE_ID_DAYLIGHT) ? 1 : 0;
+daylight_savings = weather_math::is_daylight_saving();
 fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
 weather_math::sunrise(&sun_hour, &sun_minute, year + 2000, month, day, lat, lng, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
 printf("%d:%d", sun_hour, sun_minute);
@@ -317,7 +314,6 @@ void render_html_footer(usb_weather *station, usb_weather_fixed_block_1080 *fixe
 uint8_t year, month, day, hour, minute;
 int sun_hour, sun_minute;
 int daylight_savings;
-TIME_ZONE_INFORMATION timezone_information;
 
 puts("</script>");
 puts("</head>");
@@ -328,7 +324,7 @@ fixed_block->current_time.text_render();
 printf(":", current->delay);
 printf(" (%ld minutes ago)</font></b><br>", current->delay);
 
-daylight_savings = (GetTimeZoneInformation(&timezone_information) == TIME_ZONE_ID_DAYLIGHT) ? 1 : 0;
+daylight_savings = weather_math::is_daylight_saving();
 
 fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
 weather_math::sunrise(&sun_hour, &sun_minute, year + 2000, month, day, lat, lng, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);

@@ -6,13 +6,16 @@
 */
 #include <math.h>
 #include <string.h>
+#include <time.h>
+#include <stddef.h>
+#include <windows.h>
 #include "weather_math.h"
 
 /*
 	MAX()
 	-----
 */
-size_t max (const size_t a, const size_t b)
+static inline size_t weather_max(const size_t a, const size_t b)
 {
 return (a < b) ? b : a;
 }
@@ -21,7 +24,7 @@ return (a < b) ? b : a;
 	MIN()
 	-----
 */
-size_t min (const size_t a, const size_t b)
+static inline size_t weather_min(const size_t a, const size_t b)
 {
 return (a < b) ? a : b;
 }
@@ -545,7 +548,7 @@ else
 /*
 	clip to range of lookup table
 */
-G = min(max((int)(F + 0.5), 0), strlen(LUT) - 1);
+G = weather_min(weather_max((int)(F + 0.5), 0), strlen(LUT) - 1);
 
 /*
 	convert to letter code
@@ -668,4 +671,26 @@ long j1 = julday(year, month, day);
 long jd = (2415020 + 28 * n) + i;
 
 return (j1 - jd + 30) % 30;
+}
+
+
+/*
+	WEATHER_MATH::IS_DAYLIGHT_SAVING()
+	----------------------------------
+	return true if humans are currently in daylight savings "mode"
+*/
+long weather_math::is_daylight_saving(void)
+{
+#ifdef _MSC_VER
+	TIME_ZONE_INFORMATION timezone_information;
+	return (GetTimeZoneInformation(&timezone_information) == TIME_ZONE_ID_DAYLIGHT) ? true : false;
+#else
+	time_t long_time;
+	struct tm *newtime;
+
+	time(long_time);
+	newtime = localtime(&long_time);
+	return newtime.isdst > 0 ? true : false;		// zero = not DST, -ve is unknown
+#endif
+
 }
