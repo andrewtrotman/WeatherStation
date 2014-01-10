@@ -8,7 +8,9 @@
 #include <string.h>
 #include <time.h>
 #include <stddef.h>
-#include <windows.h>
+#ifdef _MSC_VER
+	#include <windows.h>
+#endif
 #include "weather_math.h"
 
 /*
@@ -688,9 +690,10 @@ long weather_math::is_daylight_saving(void)
 	time_t long_time;
 	struct tm *newtime;
 
-	time(long_time);
+	long_time = 0;
+	time(&long_time);
 	newtime = localtime(&long_time);
-	return newtime.isdst > 0 ? true : false;		// zero = not DST, -ve is unknown
+	return newtime->tm_isdst > 0 ? true : false;		// zero = not DST, -ve is unknown
 #endif
 
 }

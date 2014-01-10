@@ -182,6 +182,8 @@ delete fixed_block;
 		else if (ioctl(file, HIDIOCGRAWINFO, &device) >= 0 && (uint16_t)device.vendor == (uint16_t)vid && (uint16_t)device.product == (uint16_t)pid)
 			{
 			hDevice = file;
+			if (read_fixed_block() == NULL)
+				return 3;	// cannot read the fixed block.
 			return 0;
 			}
 		else
@@ -459,6 +461,12 @@ usb_weather_reading *usb_weather::read_hourly_delta(void)
 uint16_t max_reads, time, address;
 usb_weather_reading *now, *previous;
 uint8_t rain_overflow, finish;
+
+/*
+	Do we have communications?
+*/
+if (fixed_block == NULL)
+	return NULL;
 
 address = fixed_block->current_position;
 max_reads = fixed_block->data_count;
