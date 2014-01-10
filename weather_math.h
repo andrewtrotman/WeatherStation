@@ -29,7 +29,7 @@ public:
 	static void sunset(int *hour, int *min, int year, int month, int day, float lat, float lng, int localOffset, int daylightSavings);
 	static double c_to_f(double temperature_in_c);
 	static double f_to_c(double temperature_in_f);
-	static double weather_math::c_to_k(double temperature_in_c);
+	static double c_to_k(double temperature_in_c);
 	static double dewpoint(double temperature_in_c, double humidity);
 	static double windchill(double temperature_in_c, double windspeed_in_ms);
 	static double australian_apparent_temperature(double temperature_in_c, double humidity, double wind_in_ms);

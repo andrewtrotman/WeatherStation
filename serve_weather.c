@@ -218,14 +218,16 @@ if (readings->lost_communications)
 	wind_direction = weather_math::NO_WIND;
 else
 	wind_direction = (readings->average_windspeed < 0.3) ? weather_math::NO_WIND : readings->wind_direction / 22.5;
-barometric_delta = deltas->absolute_pressure / 3;
-z_number = weather_math::zambretti_pywws(readings->absolute_pressure, month, wind_direction, barometric_delta, false);
+double sealevel_pressure = weather_math::pressure_to_sea_level_pressure(readings->absolute_pressure, readings->outdoor_temperature, height_above_sea_level_in_m);
+
+barometric_delta = (sealevel_pressure - weather_math::pressure_to_sea_level_pressure(readings->absolute_pressure + deltas->absolute_pressure, readings->outdoor_temperature, height_above_sea_level_in_m)) / 3.0;
+
+z_number = weather_math::zambretti_pywws(sealevel_pressure, month, wind_direction, barometric_delta, false);
 
 printf("<tr><td align=center class=\"megahuge\">&#%d;</td></tr>", z_to_font[z_number]);
 
 int trend = weather_math::pressure_trend(deltas->absolute_pressure);
-double sealevel_pressure = weather_math::pressure_to_sea_level_pressure(readings->absolute_pressure, readings->outdoor_temperature, height_above_sea_level_in_m);
-printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%*.*s</span>%0.2fhPa (%0.2f hPa) (%s)</td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", sealevel_pressure, readings->absolute_pressure, weather_math::zambretti_name(z_number));
+printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%*.*s</span>%0.2fhPa (%0.2fhPa here) (%s)</td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", sealevel_pressure, readings->absolute_pressure, weather_math::zambretti_name(z_number));
 printf("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
 
 /*

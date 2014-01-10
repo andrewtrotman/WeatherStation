@@ -707,31 +707,6 @@ long weather_math::is_daylight_saving(void)
 }
 
 /*
-	WEATHER_MATH::PRESSURE_TO_SEA_LEVEL_PRESSURE()
-	----------------------------------------------
-	see the Wikipedia article: Barometric Formula
-*/
-double weather_math::pressure_to_sea_level_pressure(double pressure_in_hpa, double temperature_in_c, double height_above_sea_level_in_m)
-{
-double P;
-double Pb = pressure_in_hpa;
-double Tb = c_to_k(temperature_in_c);
-double Lb = -0.0065;					// Standard temperature lapse rate -0.0065 (K/m) in ISA
-double h = height_above_sea_level_in_m;
-double hb = 11000;						// height of the layer above
-double R = 8.31432;					// Universal gas constant for air: 8.31432 N·m /(mol.K)
-double g0 = 9.80665;					// Gravitational acceleration (9.80665 m/s^2)
-double M = 0.0289644;					// Molar mass of Earth's air (0.0289644 kg/mol)
-
-if (Lb == 0)
-	P = Pb * exp((-g0 * M * (h -hb)) / (R * Tb));
-else
-	P = Pb * pow((Tb / (Tb + Lb * (h - hb))), (g0 * M) / (R * Lb));
-
-return P;
-}
-
-/*
 	WEATHER_MATH::WIND_DIRECTION_NAME()
 	-----------------------------------
 */
@@ -773,4 +748,13 @@ switch ((int)(angle / 22.5))
 		return "NNW";
 	}
 return "No Wind";
+}
+
+/*
+	WEATHER_MATH::PRESSURE_TO_SEA_LEVEL_PRESSURE()
+	----------------------------------------------
+*/
+double weather_math::pressure_to_sea_level_pressure(double pressure_in_hpa, double temperature_in_c, double height_above_sea_level_in_m)
+{
+return pressure_in_hpa * pow((1.0 - (0.0065 * height_above_sea_level_in_m) / (temperature_in_c + 0.0065 * height_above_sea_level_in_m + 273.15)), -5.257);
 }
