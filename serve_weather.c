@@ -203,6 +203,8 @@ if (!readings->lost_communications)
 
 	if (two_dp(readings->average_windspeed) == 0.00 && two_dp(readings->gust_windspeed) == 0.00)
 		printf("<tr><td align=center class=\"medium\">%s</td></tr>", weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
+	else if (two_dp(readings->average_windspeed) == 0.00)
+		printf("<tr><td align=center class=\"medium\">Gusts to %0.2fKn (%s)</td></tr>", weather_math::knots(readings->gust_windspeed), weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
 	else
 		printf("<tr><td align=center class=\"medium\">%0.2fKn gusts to %0.2fKn (%s)</td></tr>", weather_math::knots(readings->average_windspeed), weather_math::knots(readings->gust_windspeed), weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
 
