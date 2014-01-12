@@ -170,13 +170,13 @@ puts("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td ali
 daylight_savings = weather_math::is_daylight_saving();
 fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
 weather_math::sunrise(&sun_hour, &sun_minute, year + 2000, month, day, latitude, longitude, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
-printf("%d:%d", sun_hour, sun_minute);
+printf("%02d:%02d", sun_hour, sun_minute);
 
 uint8_t moon_phase = (weather_math::phase_of_moon(2000 + year, month, day) / 29.0) * 26.0;
 printf("</td><td align=center><span class=\"moon\">%c</span></td><td align=right>", 'A' + moon_phase);
 
 weather_math::sunset(&sun_hour, &sun_minute, year + 2000, month, day, latitude, longitude, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
-printf(" %d:%d", sun_hour, sun_minute);
+printf(" %02d:%02d", sun_hour, sun_minute);
 puts("<span class=\"symbol\">8</span></td></tr></table></td></tr>");
 
 /*
