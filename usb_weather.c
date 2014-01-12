@@ -454,7 +454,10 @@ return read_reading(address);
 /*
 	USB_WEATHER::READ_HOURLY_DELTA()
 	--------------------------------
-	get the change over the previous hour
+	Get the change over the previous hour, if we can't then we set lost_communications to true
+	As the base station might not be taking readings very often (e.g. every half hour) and we want the hourly
+	data, we're a bit stuck.  So we'll return an object that contains the correct data for the shortest time
+	greater than 59 minutes.  To linearly interpolate that data (to one hour) call interpolate_hourly_data()
 */
 usb_weather_reading *usb_weather::read_hourly_delta(void)
 {
@@ -511,4 +514,30 @@ now->rain_counter_overflow = rain_overflow;
 now->lost_communications = max_reads < 0;					// not lost_communications, more "did we manage to read an hour's worth?"
 
 return now;
+}
+
+/*
+	USB_WEATHER::INTERPOLATE_HOURLY_DELTA()
+	---------------------------------------
+*/
+usb_weather_reading *usb_weather::interpolate_hourly_delta(usb_weather_reading *delta)
+{
+usb_weather_reading *hourly_delta;
+
+hourly_delta = new usb_weather_reading;
+
+hourly_delta->delay = 60;
+hourly_delta->indoor_humidity = (delta->indoor_humidity / delta->delay) * 60;
+hourly_delta->indoor_temperature = (delta->indoor_temperature / delta->delay) * 60;
+hourly_delta->outdoor_humidity = (delta->outdoor_humidity / delta->delay) * 60;
+hourly_delta->outdoor_temperature = (delta->outdoor_temperature / delta->delay) * 60;
+hourly_delta->absolute_pressure = (delta->absolute_pressure / delta->delay) * 60;
+hourly_delta->average_windspeed = (delta->average_windspeed / delta->delay) * 60;
+hourly_delta->gust_windspeed = (delta->gust_windspeed  / delta->delay) * 60;
+hourly_delta->wind_direction = delta->wind_direction;
+hourly_delta->total_rain = (delta->total_rain / delta->delay) * 60;
+hourly_delta->rain_counter_overflow = delta->rain_counter_overflow;
+hourly_delta->lost_communications = delta->lost_communications;
+
+return hourly_delta;
 }

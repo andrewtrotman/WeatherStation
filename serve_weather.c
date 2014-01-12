@@ -47,14 +47,14 @@ int sun_hour, sun_minute;
 int daylight_savings, barometric_state;
 long z_number;
 usb_weather_fixed_block_1080 *fixed_block;
-usb_weather_reading *deltas;
+usb_weather_reading *deltas, *long_deltas;
 double wind_direction, barometric_delta, dew_point;
 
-readings = station->read_current_readings();
-deltas = station->read_hourly_delta();				// hourly deltas
-
-if (readings == NULL)
+if ((readings = station->read_current_readings()) == NULL)
 	exit(printf("Cannot read current readings\n"));
+
+long_deltas = station->read_hourly_delta();				// "near-hour" deltas
+deltas = station->interpolate_hourly_delta(long_deltas);	// interpolate "near-hour" deltas into hourly deltas
 
 fixed_block = station->read_fixed_block();
 
@@ -206,8 +206,8 @@ if (!readings->lost_communications)
 	printf("&deg;C&nbsp;</td><td align=left class=\"medium\">");
 	printf("%0.2f", readings->outdoor_humidity);
 	puts("%<br>");
-	printf("%0.2f", readings->total_rain);
-	puts("mm</td></tr>");
+	printf("%0.2f", deltas->total_rain);
+	puts("mm/h</td></tr>");
 	printf("<tr><td><span class=\"medium\"><center>(Feels like:%0.0f&deg;C)<center></span></td><td></td></tr>", apparent_temperature);
 	puts("</table></center></td></tr>");
 	}
