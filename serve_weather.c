@@ -17,8 +17,7 @@
 #include "weather_math.h"
 
 #define MODE_IPHONE 0
-#define MODE_IPAD 1
-#define MODE_PC 2
+#define MODE_PC 1
 
 static const int mode = MODE_IPHONE;
 
@@ -26,13 +25,11 @@ double latitude = -45.879278;
 double longitude = 170.487778;
 double height_above_sea_level_in_m = 184;
 
-double BAROMETRIC_STEADY_THRESHOLD = 1;
 /*
 	These are the USB VID and PID of the weather station I've got
 */
 #define USB_WEATHER_VID 0x1941			// Dream Link (in my case DIGITECH)
 #define USB_WEATHER_PID 0x8021			// WH1080 Weather Station / USB Missile Launcher (in my case USB Wireless Weather Station)
-
 
 /*
 	RENDER_CURRENT_READINGS_IPHONE()
@@ -206,8 +203,11 @@ if (!readings->lost_communications)
 	printf("&deg;C&nbsp;</td><td align=left class=\"medium\">");
 	printf("%0.2f", readings->outdoor_humidity);
 	puts("%<br>");
-	printf("%0.2f", deltas->total_rain);
-	puts("mm/h</td></tr>");
+	if (deltas->rain_counter_overflow)
+		printf("full");
+	else
+		printf("%0.2fmm/h", deltas->total_rain);
+	puts("</td></tr>");
 	printf("<tr><td><span class=\"medium\"><center>(Feels like:%0.0f&deg;C)<center></span></td><td></td></tr>", apparent_temperature);
 	puts("</table></center></td></tr>");
 	}
