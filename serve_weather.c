@@ -31,6 +31,17 @@ double height_above_sea_level_in_m = 184;
 #define USB_WEATHER_VID 0x1941			// Dream Link (in my case DIGITECH)
 #define USB_WEATHER_PID 0x8021			// WH1080 Weather Station / USB Missile Launcher (in my case USB Wireless Weather Station)
 
+
+/*
+	TWO_DP()
+	--------
+*/
+double two_dp(double value)
+{
+return ((long long)(value * 100.0)) / 100.0;
+}
+
+
 /*
 	RENDER_CURRENT_READINGS_IPHONE()
 	--------------------------------
@@ -189,7 +200,14 @@ if (!readings->lost_communications)
 		Wind
 	*/
 	printf("<tr><td align=center class=\"huge\">%s</td></tr>", weather_math::wind_direction_name(readings->wind_direction));
-	printf("<tr><td align=center class=\"medium\">%0.2fKn gusts to %0.2fKn (%s)</td></tr>", weather_math::knots(readings->average_windspeed), weather_math::knots(readings->gust_windspeed), weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
+
+	if (two_dp(readings->average_windspeed) == 0.00 && two_dp(readings->gust_windspeed) == 0.00)
+		printf("<tr><td align=center class=\"medium\">%s</td></tr>", weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
+	else
+		printf("<tr><td align=center class=\"medium\">%0.2fKn gusts to %0.2fKn (%s)</td></tr>", weather_math::knots(readings->average_windspeed), weather_math::knots(readings->gust_windspeed), weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
+
+
+
 	puts("<tr><td class=\"space\">&nbsp;</td></tr>");
 
 	/*
