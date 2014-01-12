@@ -22,9 +22,9 @@
 
 static const int mode = MODE_IPHONE;
 
-double latitude = -45.8667;
-double longitude = 170.5000;
-double height_above_sea_level_in_m = 10;
+double latitude = -45.879278;
+double longitude = 170.487778;
+double height_above_sea_level_in_m = 184;
 
 double BAROMETRIC_STEADY_THRESHOLD = 1;
 /*
@@ -227,7 +227,7 @@ z_number = weather_math::zambretti_pywws(sealevel_pressure, month, wind_directio
 printf("<tr><td align=center class=\"megahuge\">&#%d;</td></tr>", z_to_font[z_number]);
 
 int trend = weather_math::pressure_trend(deltas->absolute_pressure);
-printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%*.*s</span>%0.2fhPa (%0.2fhPa here) (%s)</td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", sealevel_pressure, readings->absolute_pressure, weather_math::zambretti_name(z_number));
+printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%*.*s</span>%0.2fhPa (%s)</td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", sealevel_pressure, weather_math::zambretti_name(z_number));
 printf("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
 
 /*
