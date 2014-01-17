@@ -14,8 +14,8 @@
 #include "weather_math.h"
 
 /*
-	MAX()
-	-----
+	WEATHER_MAX()
+	-------------
 */
 static inline size_t weather_max(const size_t a, const size_t b)
 {
@@ -23,8 +23,8 @@ return (a < b) ? b : a;
 }
 
 /*
-	MIN()
-	-----
+	WEATHER_MIN()
+	-------------
 */
 static inline size_t weather_min(const size_t a, const size_t b)
 {
@@ -112,7 +112,6 @@ else
 	return temperature_in_c;
 }
 
-
 /*
 	WEATHER_MATH::AUSTRALIAN_APPARENT_TEMPERATURE()
 	-----------------------------------------------
@@ -125,7 +124,6 @@ vapour_pressure = (humidity / 100) * 6.105 * exp((17.27 * temperature_in_c) / (2
 
 return temperature_in_c + 0.33 * vapour_pressure - 0.70 * windspeed_in_ms - 4.00;
 }
-
 
 /*
 	WEATHER_MATH::HEAT_INDEX()

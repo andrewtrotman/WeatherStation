@@ -17,9 +17,9 @@ class usb_weather_reading_raw
 public:
 	uint8_t  delay;						// minutes since last reading
 	uint8_t  indoor_humidity;
-	uint16_t indoor_temperature;		// multiply by 0.1 to get degrees C
+	int16_t indoor_temperature;		// multiply by 0.1 to get degrees C
 	uint8_t  outdoor_humidity;
-	uint16_t outdoor_temperature;		// multiply by 0.1 to get degrees C
+	int16_t outdoor_temperature;		// multiply by 0.1 to get degrees C
 	uint16_t absolute_pressure;			// multiply by 0.1 to get hPa
 	uint8_t  average_windspeed_low;		// multiply by 0.1 to get m/s
 	uint8_t  gust_windspeed_low;		// multiply by 0.1 to get m/s

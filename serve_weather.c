@@ -55,14 +55,17 @@ int sun_hour, sun_minute;
 int daylight_savings, barometric_state;
 long z_number;
 usb_weather_fixed_block_1080 *fixed_block;
-usb_weather_reading *deltas, *long_deltas;
+usb_weather_reading *deltas, *long_deltas, highs, lows, *got_high_low;
 double wind_direction, barometric_delta, dew_point;
+char *msie;
+long mins_since_sunrise;
 
 if ((readings = station->read_current_readings()) == NULL)
 	exit(printf("Cannot read current readings\n"));
 
 long_deltas = station->read_hourly_delta();				// "near-hour" deltas
 deltas = station->interpolate_hourly_delta(long_deltas);	// interpolate "near-hour" deltas into hourly deltas
+got_high_low = station->read_highs_and_lows(&highs, &lows);
 
 fixed_block = station->read_fixed_block();
 
@@ -112,39 +115,66 @@ puts("    font-weight: normal;");
 puts("    font-style: normal;");
 puts("}");
 
+/*
+	Are we Microsoft Windows?
+*/
+if ((msie = getenv("HTTP_USER_AGENT")) != NULL)
+	msie = strstr(msie, "MSIE");
+
 puts("html, body");
 puts("	{");
 puts("	font-family:calibri,euphemiaucas;");
-puts("	font-size:36pt;");
+if (msie)
+	puts("	font-size:18pt;");
+else
+	puts("	font-size:36pt;");
 puts("	height:100%");
 puts("	}");
 puts("td");
 puts("	{");
 puts("	font-family:calibri,euphemiaucas;");
-puts("	font-size:36pt;");
+if (msie)
+	puts("	font-size:18pt;");
+else
+	puts("	font-size:36pt;");
 puts("	}");
 puts(".medium");
 puts("	{");
-puts("	font-size:40pt;");
+if (msie)
+	puts("	font-size:20pt;");
+else
+	puts("	font-size:40pt;");
 puts("	}");
 puts(".huge");
 puts("	{");
-puts("	font-size:100pt;");
+if (msie)
+	puts("	font-size:40pt;");
+else
+	puts("	font-size:100pt;");
 puts("	}");
 puts(".megahuge");
 puts("	{");
 puts("	font-family:weather;");
-puts("	font-size:380pt");
+if (msie)
+	puts("	font-size:100pt;");
+else
+	puts("	font-size:380pt;");
 puts("	}");
 puts(".symbol");
 puts("	{");
 puts("	font-family:weather;");
-puts("	font-size:60pt;");
+if (msie)
+	puts("	font-size:30pt;");
+else
+	puts("	font-size:60pt;");
 puts("	}");
 puts(".moon");
 puts("	{");
 puts("	font-family:moon_phasesregular;");
-puts("	font-size:40pt;");
+if (msie)
+	puts("	font-size:20pt;");
+else
+	puts("	font-size:40pt;");
 puts("	}");
 puts(".arrowfont");
 puts("	{");
@@ -153,11 +183,17 @@ puts("	font-weight:bold;");
 puts("	}");
 puts(".space");
 puts("	{");
-puts("	line-height:40px;");
+if (msie)
+	puts("	font-size:20px;");
+else
+	puts("	font-size:40px;");
 puts("	}");
 puts(".halfspace");
 puts("	{");
-puts("	line-height:20px;");
+if (msie)
+	puts("	font-size:10px;");
+else
+	puts("	font-size:20px;");
 puts("	}");
 
 puts("A:link, A:visited, A:active, A:hover ");
@@ -173,20 +209,24 @@ puts("<body>");
 puts("<table cellpadding=0 cellspacing=0 border=0 width=100%>");
 
 /*
-	Sunrise, Moon, and Sunset
+	Sunrise, 24hour low,  Moon, and 24 hour hight, and Sunset
 */
-puts("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td align=left><span class=\"symbol\">7</span>");
+puts("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%><tr>");
 daylight_savings = weather_math::is_daylight_saving();
 fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
 weather_math::sunrise(&sun_hour, &sun_minute, year + 2000, month, day, latitude, longitude, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
-printf("%02d:%02d", sun_hour, sun_minute);
+printf("<td align=left><span class=\"symbol\">7</span>%02d:%02d</td>", sun_hour, sun_minute);
+if (got_high_low)
+	printf("<td align=center>%0.0f&deg;C</td>", lows.outdoor_temperature);
 
 uint8_t moon_phase = (weather_math::phase_of_moon(2000 + year, month, day) / 29.0) * 26.0;
-printf("</td><td align=center><span class=\"moon\">%c</span></td><td align=right>", 'A' + moon_phase);
+printf("<td align=center><span class=\"moon\">%c</span></td>", 'A' + moon_phase);
+if (got_high_low)
+	printf("<td align=center>%0.0f&deg;C</td>", highs.outdoor_temperature);
 
 weather_math::sunset(&sun_hour, &sun_minute, year + 2000, month, day, latitude, longitude, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
-printf(" %02d:%02d", sun_hour, sun_minute);
-puts("<span class=\"symbol\">8</span></td></tr></table></td></tr>");
+printf("<td align=right>%02d:%02d<span class=\"symbol\">8</span></td></tr></table></td>", sun_hour, sun_minute);
+puts("</tr>");
 
 /*
 	Whats the time now? 
@@ -219,7 +259,8 @@ if (!readings->lost_communications)
 	double apparent_temperature = weather_math::apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
 	//double australian_apparent_temperature = weather_math::australian_apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
 
-	puts("<tr><td align=center><center><table cellpadding=0 cellspacing=0 border=0><tr><td align=right class=\"huge\">");
+	puts("<tr><td align=center><center><table cellpadding=0 cellspacing=0 border=0>");
+	puts("<tr><td align=right class=\"huge\">");
 	printf("<span class=\"arrowfont\">%s</span>%0.2f", deltas->outdoor_temperature > 0 ? "&uarr;" : deltas->outdoor_temperature < 0 ? "&darr;" : "", readings->outdoor_temperature);
 	printf("&deg;C&nbsp;</td><td align=left class=\"medium\">");
 	printf("%0.2f", readings->outdoor_humidity);
@@ -227,9 +268,14 @@ if (!readings->lost_communications)
 	if (deltas->rain_counter_overflow)
 		printf("full");
 	else
-		printf("%0.2fmm/h", deltas->total_rain);
+		printf("<span class=\"medium\">%0.2fmm/h</span>", deltas->total_rain);
 	puts("</td></tr>");
-	printf("<tr><td><span class=\"medium\"><center>(Feels like:%0.0f&deg;C)<center></span></td><td></td></tr>", apparent_temperature);
+	printf("<tr><td><span class=\"medium\"><center>(Feels like:%0.0f&deg;C)<center></span></td>", apparent_temperature);
+	if (got_high_low)
+		printf("<td><span class=\"medium\">%0.2fmm/24h</span></td>", highs.total_rain - lows.total_rain);
+	else
+		puts("<td></td>");
+	puts("</tr>");
 	puts("</table></center></td></tr>");
 	}
 /*
@@ -254,15 +300,13 @@ printf("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
 /*
 	Inside temperature and humidity
 */
-printf("<tr><td align=center class=\"medium\">(");
-
+printf("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%%><tr><td width=10%%>&nbsp;</td><td align=center class=\"medium\">(");
 if (!readings->lost_communications)
 	{
 	dew_point = weather_math::dewpoint(readings->outdoor_temperature, readings->outdoor_humidity);
 	printf("Dewpoint:%0.0f&deg;C, ", dew_point);
 	}
-
-printf("Inside:%0.0f&deg;C %0.0f%%) <span class=symbol><span class=huge><a href=%s>*</a></span></span></td></tr>", readings->indoor_temperature, readings->indoor_humidity, getenv("SCRIPT_NAME"));
+printf("Inside:%0.0f&deg;C, %0.0f%%)</td><td align=right width=10%%><span class=symbol><span class=huge><a href=%s>*</a></span></span></td></tr></table></td></tr>", readings->indoor_temperature, readings->indoor_humidity, getenv("SCRIPT_NAME"));
 puts("</table>");
 
 

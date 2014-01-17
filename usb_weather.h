@@ -44,6 +44,7 @@ public:
 	usb_weather_reading *read_hourly_delta(void);
 	usb_weather_reading *interpolate_hourly_delta(usb_weather_reading *delta);
 	usb_weather_reading **read_all_readings(uint32_t *readings);
+	usb_weather_reading *read_highs_and_lows(usb_weather_reading *highs, usb_weather_reading *lows, uint32_t since_minutes_ago = 24 * 60);
 } ;
 
 #endif /* USB_WEATHER_H_ */

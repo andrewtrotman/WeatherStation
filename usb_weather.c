@@ -4,6 +4,7 @@
 	Copyright (c) 2012-2013 Andrew Trotman
 	Licensed BSD
 */
+#include <float.h>
 #include "usb_weather.h"
 #include "usb_weather_message.h"
 #include "usb_weather_reading_raw.h"
@@ -32,14 +33,19 @@
 
 	The Raspberry Pi and Intel are both Little Endian so no decoding is necesary!
 */
-inline uint16_t decode(uint16_t &value)
+inline uint16_t decode(uint16_t value)
 {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-	return (value >> 8) | (value << 8);
-#else
+#ifdef _MSC_VER
 	return value;
+#else
+	#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+		return (value >> 8) | (value << 8);
+	#else
+		return value;
+	#endif
 #endif
 }
+inline int16_t decode(int16_t value) { return (int16_t)decode((uint16_t)value); }
 
 /*
 	USB_WEATHER::USB_WEATHER()
@@ -482,7 +488,7 @@ max_reads--;
 finish = max_reads <= 0;
 while (!finish)
 	{
-	if ((address = fixed_block->current_position - 16) < 0x100)
+	if ((address -= 16) < 0x100)
 		address = 0x10000 - sizeof(usb_weather_reading_raw);
 	if ((previous = read_reading(address)) == NULL)
 		{
@@ -540,4 +546,69 @@ hourly_delta->rain_counter_overflow = delta->rain_counter_overflow;
 hourly_delta->lost_communications = delta->lost_communications;
 
 return hourly_delta;
+}
+
+/*
+	USB_WEATHER::READ_HIGHS_AND_LOWS()
+	----------------------------------
+*/
+usb_weather_reading *usb_weather::read_highs_and_lows(usb_weather_reading *highs, usb_weather_reading *lows, uint32_t since_minutes_ago)
+{
+uint16_t max_reads, time, address;
+usb_weather_reading *reading;
+uint8_t rain_overflow, lost_communications, finish;
+
+lows->indoor_humidity = lows->outdoor_humidity = lows->indoor_temperature = lows->outdoor_temperature = lows->absolute_pressure = lows->average_windspeed = lows->gust_windspeed = lows->total_rain = DBL_MAX;
+highs->indoor_humidity = highs->outdoor_humidity = highs->indoor_temperature = highs->outdoor_temperature = highs->absolute_pressure = highs->average_windspeed = highs->gust_windspeed = highs->total_rain = DBL_MIN;
+
+/*
+	Do we have communications?
+*/
+if (fixed_block == NULL)
+	return NULL;
+
+rain_overflow = false;
+lost_communications = false;
+address = fixed_block->current_position;
+max_reads = fixed_block->data_count;
+time = 0;
+reading = NULL;
+finish = false;
+
+while (!finish)
+	{
+	delete reading;
+
+	if ((reading = read_reading(address)) == NULL)
+		return NULL;
+
+	time += reading->delay;
+#define COMPUTE_MAX_MIN(x) ((highs->x = reading->x > highs->x ? reading->x : highs->x), (lows->x = reading->x < lows->x ? reading->x : lows->x))
+	COMPUTE_MAX_MIN(indoor_humidity);
+	COMPUTE_MAX_MIN(indoor_temperature);
+	COMPUTE_MAX_MIN(outdoor_humidity);
+	COMPUTE_MAX_MIN(outdoor_temperature);
+	COMPUTE_MAX_MIN(absolute_pressure);
+	COMPUTE_MAX_MIN(average_windspeed);
+	COMPUTE_MAX_MIN(gust_windspeed);
+	COMPUTE_MAX_MIN(total_rain);
+#undef COMPUTE_MAX_MIN
+	rain_overflow = rain_overflow || reading->rain_counter_overflow;
+	lost_communications = lost_communications || reading->lost_communications;
+
+	max_reads--;
+	if (max_reads <= 0)
+		finish = true;
+	if (time > 60 * 24)
+		finish = true;
+
+	if ((address -= 16) < 0x100)
+		address = 0x10000 - sizeof(usb_weather_reading_raw);
+	}
+
+highs->delay = lows->delay = time;
+highs->rain_counter_overflow = lows->rain_counter_overflow = rain_overflow;
+highs->lost_communications = lows->lost_communications = lost_communications;
+
+return highs;
 }
