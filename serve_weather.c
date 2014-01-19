@@ -382,10 +382,10 @@ puts("</html>");
 }
 
 /*
-	RENDER_HTML_GRAPH()
-	-------------------
+	ORIGINAL_RENDER_HTML_GRAPH()
+	----------------------------
 */
-void render_html_graph(const char *name, const char *title, const char *x_title, const char *y_title, long elements, long *timeline, double *data)
+void original_render_html_graph(const char *name, const char *title, const char *x_title, const char *y_title, long elements, long *timeline, double *data)
 {
 long current;
 
@@ -398,6 +398,40 @@ printf("var data = google.visualization.arrayToDataTable([['Minutes', 'Data']");
 for (current = 0; current < elements; current++)
 	printf(", [%d, %0.2f]", timeline[current], data[current]);
 printf("]);\n");
+
+printf("var options =\n");
+printf("	{\n");
+printf("	title: '%s',\n", title);
+printf("	hAxis: {title: '%s', direction: -1},\n", x_title);
+printf("	vAxis: {title: '%s'},\n", y_title);
+printf("	lineWidth: 1,\n");
+printf("	legend: 'none'\n");
+printf("	};\n");
+printf("var chart = new google.visualization.ScatterChart(document.getElementById('chart_div_%s'));\n", name);
+printf("chart.draw(data, options);\n");
+printf("}\n\n");
+}
+
+
+/*
+	RENDER_HTML_GRAPH()
+	-------------------
+*/
+void render_html_graph(const char *name, const char *title, const char *x_title, const char *y_title, long elements, long *timeline, double *data)
+{
+long current;
+
+printf("google.setOnLoadCallback(drawChart_%s);\n", name);
+
+printf("function drawChart_%s()\n", name);
+printf("{\n");
+
+printf("var data = new google.visualization.DataTable();\n");
+
+printf("data.addColumn('number');\n");
+printf("data.addColumn('number');\n");
+for (current = 0; current < elements; current++)
+	printf("data.addRow([%d, %0.2f]);\n", timeline[current], data[current]);
 
 printf("var options =\n");
 printf("	{\n");
@@ -542,7 +576,7 @@ usb_weather_reading **history;
 int32_t current;
 uint32_t readings;
 
-if ((history = station->read_all_readings(&readings)) == NULL)
+if ((history = station->read_all_readings(&readings, 48)) == NULL)
 	exit(printf("Cannot read historic readings\n"));
 
 timeline = new long [readings];
