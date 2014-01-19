@@ -17,14 +17,24 @@
 #include "usb_weather_reading.h"
 #include "weather_math.h"
 
-#define MODE_IPHONE 0
-#define MODE_PC 1
-
-static const int mode = MODE_PC;
-
+/*
+	Our current longitude, latitude, and height above sea level (needed for sunrise, sunset, and sea level pressure adjustment)
+*/
 double latitude = -45.879278;
 double longitude = 170.487778;
 double height_above_sea_level_in_m = 184;
+
+/*
+	for rendering historic readings
+*/
+enum {OUTSIDE_TEMPERATURE = 0x01, INSIDE_TEMPERATURE = 0x02, OUTSIDE_HUMIDITY = 0x04, INSIDE_HUMIDITY = 0x08, RAINFALL = 0x10, WINDSPEED = 0x20, WINDGUST = 0x40, PRESSURE = 0x80, ALL = 0xFF};
+
+/*
+	what are we rendering on
+*/
+#define MODE_IPHONE 0
+#define MODE_PC 1
+static const int mode = MODE_IPHONE;
 
 /*
 	These are the USB VID and PID of the weather station I've got
@@ -32,6 +42,10 @@ double height_above_sea_level_in_m = 184;
 #define USB_WEATHER_VID 0x1941			// Dream Link (in my case DIGITECH)
 #define USB_WEATHER_PID 0x8021			// WH1080 Weather Station / USB Missile Launcher (in my case USB Wireless Weather Station)
 
+/*
+	Prototypes
+*/
+usb_weather_reading **render_historic_readings(usb_weather *station, uint32_t what_to_render);
 
 /*
 	TWO_DP()
@@ -41,7 +55,6 @@ double two_dp(double value)
 {
 return ((long long)(value * 100.0)) / 100.0;
 }
-
 
 /*
 	RENDER_CURRENT_READINGS_IPHONE()
@@ -81,19 +94,23 @@ puts("<link rel=\"apple-touch-startup-image\" href=\"startup.png\">");
 //puts("<meta id=\"viewport\" name=\"viewport\" content=\"initial-scale=0.70\">");
 puts("<meta id=\"viewport\" name=\"viewport\" content=\"initial-scale=0.1\">");
 
-puts("<script>");
+puts("<script type=\"text/javascript\" src=\"https://www.google.com/jsapi\"></script>");
+puts("<script type=\"text/javascript\">");
+puts("google.load(\"visualization\", \"1\", {packages:[\"corechart\"]});");
+render_historic_readings(station, OUTSIDE_TEMPERATURE | RAINFALL | WINDGUST);
+//render_historic_readings(station, OUTSIDE_TEMPERATURE);
+puts("</script>");
 
+puts("<script type=\"text/javascript\">");
 puts("if (window.screen.availHeight == 460)");			// iPhone 4
 puts("	document.getElementById(\"viewport\").setAttribute(\"content\", \"initial-scale=0.32\");");
 puts("else if (window.screen.availHeight == 1004)");	// iPad
 puts("	document.getElementById(\"viewport\").setAttribute(\"content\", \"initial-scale=0.7\");");
 puts("else");											// iPhone 5?
 puts("	document.getElementById(\"viewport\").setAttribute(\"content\", \"initial-scale=0.3\");");
-
 puts("</script>");
 
 puts("<style>");
-
 puts("@font-face {");
 puts("    font-family: 'weather';");
 puts("    src: url('/artill_clean_icons-webfont.eot');");
@@ -310,6 +327,12 @@ if (!readings->lost_communications)
 printf("Inside:%0.0f&deg;C, %0.0f%%)</td><td align=right><span class=symbol><span class=huge><a href=%s>*</a></span></span></td></tr></table></td></tr>", readings->indoor_temperature, readings->indoor_humidity, getenv("SCRIPT_NAME"));
 puts("</table>");
 
+/*
+	Graphs
+*/
+puts("<table><tr><td><div id=\"chart_div_outdoor_temperature\" style=\"width: 1000px; height: 500px;\"></div></td></tr></table>");
+puts("<table><tr><td><div id=\"chart_div_rain\" style=\"width: 1000px; height: 500px;\"></div></td></tr></table>");
+puts("<table><tr><td><div id=\"chart_div_gust\" style=\"width: 1000px; height: 500px;\"></div></td></tr></table>");
 
 /*
 	Done
@@ -372,54 +395,22 @@ puts("</tr></table>");
 puts("<hr>");
 puts("<b>Historic Readings</b><br>");
 puts("<table>");
-puts("<tr><td><div id=\"chart_div_outdoor_temperature\" style=\"width: 450px; height: 250px;\"></div></td><td><div id=\"chart_div_indoor_temperature\" style=\"width: 450px; height: 250px;\"></div></tr>");
+puts("<tr><td><div id=\"chart_div_outdoor_temperature\" style=\"width: 450px; height: 250px;\"></div></td><td><div id=\"chart_div_rain\" style=\"width: 450px; height: 250px;\"></div></td></tr>");
+puts("<tr><td><div id=\"chart_div_pressure\" style=\"width: 450px; height: 250px;\"></div></td><td><div id=\"chart_div_indoor_temperature\" style=\"width: 450px; height: 250px;\"></div></td></tr>");
 puts("<tr><td><div id=\"chart_div_outdoor_humidity\" style=\"width: 450px; height: 250px;\"></div></td><td><div id=\"chart_div_indoor_humidity\" style=\"width: 450px; height: 250px;\"></div></tr>");
 puts("<tr><td><div id=\"chart_div_windspeed\" style=\"width: 450px; height: 250px;\"></div></td><td><div id=\"chart_div_gust\" style=\"width: 450px; height: 250px;\"></div></tr>");
-puts("<tr><td><div id=\"chart_div_pressure\" style=\"width: 450px; height: 250px;\"></div></td><td><div id=\"chart_div_rain\" style=\"width: 450px; height: 250px;\"></div></tr>");
 puts("</table>");
 puts("</body>");
 puts("</html>");
 }
 
 /*
-	ORIGINAL_RENDER_HTML_GRAPH()
-	----------------------------
-*/
-void original_render_html_graph(const char *name, const char *title, const char *x_title, const char *y_title, long elements, long *timeline, double *data)
-{
-long current;
-
-printf("google.setOnLoadCallback(drawChart_%s);\n", name);
-
-printf("function drawChart_%s()\n", name);
-printf("{\n");
-
-printf("var data = google.visualization.arrayToDataTable([['Minutes', 'Data']");
-for (current = 0; current < elements; current++)
-	printf(", [%d, %0.2f]", timeline[current], data[current]);
-printf("]);\n");
-
-printf("var options =\n");
-printf("	{\n");
-printf("	title: '%s',\n", title);
-printf("	hAxis: {title: '%s', direction: -1},\n", x_title);
-printf("	vAxis: {title: '%s'},\n", y_title);
-printf("	lineWidth: 1,\n");
-printf("	legend: 'none'\n");
-printf("	};\n");
-printf("var chart = new google.visualization.ScatterChart(document.getElementById('chart_div_%s'));\n", name);
-printf("chart.draw(data, options);\n");
-printf("}\n\n");
-}
-
-
-/*
 	RENDER_HTML_GRAPH()
 	-------------------
 */
-void render_html_graph(const char *name, const char *title, const char *x_title, const char *y_title, long elements, long *timeline, double *data)
+void render_html_graph(const char *name, const char *title, const char *x_title, const char *y_title, long elements, long *timeline, double *data, long mins_since_midnight)
 {
-long current;
+long current, hours, mins, when;
 
 printf("google.setOnLoadCallback(drawChart_%s);\n", name);
 
@@ -428,18 +419,37 @@ printf("{\n");
 
 printf("var data = new google.visualization.DataTable();\n");
 
-printf("data.addColumn('number');\n");
-printf("data.addColumn('number');\n");
+printf("data.addColumn('timeofday', 'Time');\n");
+printf("data.addColumn('number', 'Yesterday');\n");
+printf("data.addColumn('number', 'Today');\n");
 for (current = 0; current < elements; current++)
-	printf("data.addRow([%d, %0.2f]);\n", timeline[current], data[current]);
+	{
+	if ((when = mins_since_midnight - timeline[current]) < 0)
+		{
+		when += (60 * 24);		// yesterday (or earlier)
+		if (when > 0)			// we only care about yesterday (forget earlier)
+			{
+			hours = when / 60;
+			mins = when % 60;
+			printf("data.addRow([[%d, %d, 0, 0], %0.2f, null]);\n", hours, mins, data[current]);
+			}
+		}
+	else
+		{
+		hours = when / 60;
+		mins = when % 60;
+		printf("data.addRow([[%d, %d, 0, 0], null, %0.2f]);\n", hours, mins, data[current]);
+		}
+	}
 
 printf("var options =\n");
 printf("	{\n");
 printf("	title: '%s',\n", title);
-printf("	hAxis: {title: '%s', direction: -1},\n", x_title);
+printf("	hAxis: {title: '%s'},\n", x_title);
 printf("	vAxis: {title: '%s'},\n", y_title);
 printf("	lineWidth: 1,\n");
-printf("	legend: 'none'\n");
+printf("	legend: 'none',\n");
+printf("	series: {0:{color: 'black', pointSize:1}, 1:{color: 'black', pointSize:4}}");
 printf("	};\n");
 printf("var chart = new google.visualization.ScatterChart(document.getElementById('chart_div_%s'));\n", name);
 printf("chart.draw(data, options);\n");
@@ -567,20 +577,66 @@ return readings;
 	RENDER_HISTORIC_READINGS()
 	--------------------------
 */
-usb_weather_reading **render_historic_readings(usb_weather *station)
+usb_weather_reading **render_historic_readings(usb_weather *station, uint32_t what_to_render)
 {
 long sum;
 long *timeline;
 double *data;
 usb_weather_reading **history;
-int32_t current;
+long current, bucket;
 uint32_t readings;
+usb_weather_fixed_block_1080 *fixed_block;
+uint8_t year, month, day, hour, minute;
+long mins_since_midnight, readings_wanted;
+double initial_rain;
 
-if ((history = station->read_all_readings(&readings, 48)) == NULL)
+fixed_block = station->read_fixed_block();
+fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
+mins_since_midnight = hour * 60 + minute;
+
+readings_wanted = (mins_since_midnight + (60 * 24)) / fixed_block->read_period;
+
+if ((history = station->read_all_readings(&readings, readings_wanted)) == NULL)
 	exit(printf("Cannot read historic readings\n"));
 
 timeline = new long [readings];
 data = new double [readings];
+
+/*
+	The rainbucket can fill so we only have a valid reading if it isn't full and we have valid communications
+*/
+if ((what_to_render & RAINFALL) != 0)
+	{
+	sum = 0;
+	for (current = readings - 1; current >= 1; current--)
+		{
+		if (!history[current]->lost_communications)
+			{
+			timeline[current] = sum;
+			if (history[current]->total_rain == history[current - 1]->total_rain)
+				data[current] = 0;
+			else
+				{
+				/*
+					Find the initial rain guage level (at the begining of the shower)
+				*/
+				initial_rain = history[0]->total_rain;
+				for (bucket = current; bucket >= 1; bucket--)
+					if (history[bucket]->total_rain == history[bucket - 1]->total_rain)
+						{
+						initial_rain = history[bucket]->total_rain;
+						break;
+						}
+				/*
+					Now compute this shower's amount
+				*/
+				data[current] = history[current]->total_rain - initial_rain;		// initial_rain is the cumulative rain (to date) *after* the shower
+				}
+			}
+		sum += history[current]->delay;
+		}
+	render_html_graph("rain", "Showers", "Time", "millimetres", readings, timeline, data, mins_since_midnight);
+	}
 
 /*
 	Indoor temperature, indoor humidity, and pressure are from the base unit
@@ -593,32 +649,26 @@ for (current = readings - 1; current >= 0; current--)
 	sum += history[current]->delay;
 	}
 
-for (current = readings - 1; current >= 0; current--)
-	data[current] = history[current]->indoor_temperature;
-render_html_graph("indoor_temperature", "Indoor Temperature", "Minutes Ago", "Degrees C", readings, timeline, data);
-
-for (current = readings - 1; current >= 0; current--)
-	data[current] = history[current]->indoor_humidity;
-render_html_graph("indoor_humidity", "Indoor Humidity", "Minutes Ago", "Percent", readings, timeline, data);
-
-for (current = readings - 1; current >= 0; current--)
-	data[current] = history[current]->absolute_pressure;
-render_html_graph("pressure", "Pressure", "Minutes Ago", "Hectopascals", readings, timeline, data);
-
-/*
-	The rainbucket can fill so we only have a valid reading if it isn't full and we have valid communications
-*/
-sum = 0;
-for (current = readings - 1; current >= 0; current--)
+if ((what_to_render & INSIDE_TEMPERATURE) != 0)
 	{
-	if (!history[current]->lost_communications)
-		{
-		timeline[current] = sum;
-		data[current] = history[current]->total_rain;
-		}
-	sum += history[current]->delay;
+	for (current = readings - 1; current >= 0; current--)
+		data[current] = history[current]->indoor_temperature;
+	render_html_graph("indoor_temperature", "Inside Temperature", "Time", "Degrees C", readings, timeline, data, mins_since_midnight);
 	}
-render_html_graph("rain", "Cumulative Rainfall", "Minutes Ago", "millimetres", readings, timeline, data);
+
+if ((what_to_render & INSIDE_HUMIDITY) != 0)
+	{
+	for (current = readings - 1; current >= 0; current--)
+		data[current] = history[current]->indoor_humidity;
+	render_html_graph("indoor_humidity", "Inside Humidity", "Time", "Percent", readings, timeline, data, mins_since_midnight);
+	}
+
+if ((what_to_render & PRESSURE) != 0)
+	{
+	for (current = readings - 1; current >= 0; current--)
+		data[current] = history[current]->absolute_pressure;
+	render_html_graph("pressure", "Pressure", "Time", "Hectopascals", readings, timeline, data, mins_since_midnight);
+	}
 
 /*
 	The remainder are from the remote unit and so an error can occur so we check the status word
@@ -631,25 +681,37 @@ for (current = readings - 1; current >= 0; current--)
 	sum += history[current]->delay;
 	}
 
-for (current = readings - 1; current >= 0; current--)
-	if (!history[current]->lost_communications)
-		data[current] = history[current]->outdoor_temperature;
-render_html_graph("outdoor_temperature", "Outdoor Temperature", "Minutes Ago", "Degrees C", readings, timeline, data);
+if ((what_to_render & OUTSIDE_TEMPERATURE) != 0)
+	{
+	for (current = readings - 1; current >= 0; current--)
+		if (!history[current]->lost_communications)
+			data[current] = history[current]->outdoor_temperature;
+	render_html_graph("outdoor_temperature", "Outside Temperature", "Time", "Degrees C", readings, timeline, data, mins_since_midnight);
+	}
 
-for (current = readings - 1; current >= 0; current--)
-	if (!history[current]->lost_communications)
-		data[current] = history[current]->outdoor_humidity;;
-render_html_graph("outdoor_humidity", "Outdoor Humidity", "Minutes Ago", "Percent", readings, timeline, data);
+if ((what_to_render & OUTSIDE_HUMIDITY) != 0)
+	{
+	for (current = readings - 1; current >= 0; current--)
+		if (!history[current]->lost_communications)
+			data[current] = history[current]->outdoor_humidity;;
+	render_html_graph("outdoor_humidity", "Outside Humidity", "Time", "Percent", readings, timeline, data, mins_since_midnight);
+	}
 
-for (current = readings - 1; current >= 0; current--)
-	if (!history[current]->lost_communications)
-		data[current] = weather_math::knots(history[current]->average_windspeed);
-render_html_graph("windspeed", "Wind Speed", "Minutes Ago", "Knots", readings, timeline, data);
+if ((what_to_render & WINDSPEED) != 0)
+	{
+	for (current = readings - 1; current >= 0; current--)
+		if (!history[current]->lost_communications)
+			data[current] = weather_math::knots(history[current]->average_windspeed);
+	render_html_graph("windspeed", "Wind Speed", "Time", "Knots", readings, timeline, data, mins_since_midnight);
+	}
 
-for (current = readings - 1; current >= 0; current--)
-	if (!history[current]->lost_communications)
-		data[current] = weather_math::knots(history[current]->gust_windspeed);
-render_html_graph("gust", "Wind Gust", "Minutes Ago", "Knots", readings, timeline, data);
+if ((what_to_render & WINDGUST) != 0)
+	{
+	for (current = readings - 1; current >= 0; current--)
+		if (!history[current]->lost_communications)
+			data[current] = weather_math::knots(history[current]->gust_windspeed);
+	render_html_graph("gust", "Wind Gust", "Time", "Knots", readings, timeline, data, mins_since_midnight);
+	}
 
 /*
 	uint8_t  wind_direction;			// multiply by 22.5 to get degrees from north
@@ -678,7 +740,7 @@ if (station.connect(USB_WEATHER_VID, USB_WEATHER_PID) == 0)
 		{
 		render_html_header();
 		current = render_current_readings(&station);
-		historic = render_historic_readings(&station);
+		historic = render_historic_readings(&station, ALL);
 		render_html_footer(&station, station.read_fixed_block(), current, historic);
 		}
 	}

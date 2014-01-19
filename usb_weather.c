@@ -390,7 +390,7 @@ if (fixed_block == NULL)
 	How many readings to get
 */
 if (max_readings < 0)
-	max_readings - fixed_block->data_count;
+	max_readings = fixed_block->data_count;
 else
 	max_readings = fixed_block->data_count < max_readings ? fixed_block->data_count : max_readings;
 
