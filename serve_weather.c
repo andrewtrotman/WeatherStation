@@ -20,7 +20,7 @@
 #define MODE_IPHONE 0
 #define MODE_PC 1
 
-static const int mode = MODE_IPHONE;
+static const int mode = MODE_PC;
 
 double latitude = -45.879278;
 double longitude = 170.487778;
@@ -301,13 +301,13 @@ printf("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
 /*
 	Inside temperature and humidity
 */
-printf("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%%><tr><td width=10%%>&nbsp;</td><td align=center class=\"medium\">(");
+printf("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%%><tr><td>&nbsp;</td><td align=center class=\"medium\">(");
 if (!readings->lost_communications)
 	{
 	dew_point = weather_math::dewpoint(readings->outdoor_temperature, readings->outdoor_humidity);
 	printf("Dewpoint:%0.0f&deg;C, ", dew_point);
 	}
-printf("Inside:%0.0f&deg;C, %0.0f%%)</td><td align=right width=10%%><span class=symbol><span class=huge><a href=%s>*</a></span></span></td></tr></table></td></tr>", readings->indoor_temperature, readings->indoor_humidity, getenv("SCRIPT_NAME"));
+printf("Inside:%0.0f&deg;C, %0.0f%%)</td><td align=right><span class=symbol><span class=huge><a href=%s>*</a></span></span></td></tr></table></td></tr>", readings->indoor_temperature, readings->indoor_humidity, getenv("SCRIPT_NAME"));
 puts("</table>");
 
 

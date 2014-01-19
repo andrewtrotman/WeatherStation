@@ -372,8 +372,9 @@ return fixed_block;
 /*
 	USB_WEATHER::READ_ALL_READINGS()
 	--------------------------------
+	read no more that max_readings, but historically back as far as possible otherwise
 */
-usb_weather_reading **usb_weather::read_all_readings(uint32_t *readings)
+usb_weather_reading **usb_weather::read_all_readings(uint32_t *readings, int32_t max_readings)
 {
 usb_weather_reading **history;
 uint16_t address;
@@ -386,20 +387,27 @@ if (fixed_block == NULL)
 	return NULL;
 
 /*
+	How many readings to get
+*/
+if (max_readings < 0)
+	max_readings - fixed_block->data_count;
+else
+	max_readings = fixed_block->data_count < max_readings ? fixed_block->data_count : max_readings;
+
+/*
 	Get the base address of the first reading
 */
-address = (fixed_block->current_position - 0x100) - ((fixed_block->data_count - 1) * 16);
-address += 0x100;
+address = 0x100 + ((fixed_block->current_position - 0x100) - ((max_readings - 1) * 16));
 
 /*
 	Allocate space
 */
-history = new usb_weather_reading *[fixed_block->data_count];
+history = new usb_weather_reading *[max_readings];
 
 /*
 	Download each reading
 */
-for (current = 0; current < fixed_block->data_count; current++)
+for (current = 0; current < max_readings; current++)
 	{
 	history[current] = read_reading(address);
 	if ((address += 16)  < 0x100)
@@ -409,7 +417,7 @@ for (current = 0; current < fixed_block->data_count; current++)
 /*
 	Pass the results back to the caller
 */
-*readings = fixed_block->data_count;
+*readings = max_readings;
 return history;
 }
 
