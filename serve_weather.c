@@ -27,7 +27,7 @@ double height_above_sea_level_in_m = 184;
 /*
 	for rendering historic readings
 */
-enum {OUTSIDE_TEMPERATURE = 0x01, INSIDE_TEMPERATURE = 0x02, OUTSIDE_HUMIDITY = 0x04, INSIDE_HUMIDITY = 0x08, RAINFALL = 0x10, WINDSPEED = 0x20, WINDGUST = 0x40, PRESSURE = 0x80, ALL = 0xFF};
+enum {NONE = 0, OUTSIDE_TEMPERATURE = 0x01, INSIDE_TEMPERATURE = 0x02, OUTSIDE_HUMIDITY = 0x04, INSIDE_HUMIDITY = 0x08, RAINFALL = 0x10, WINDSPEED = 0x20, WINDGUST = 0x40, PRESSURE = 0x80, ALL = 0xFF};
 
 /*
 	what are we rendering on
@@ -57,35 +57,19 @@ return ((long long)(value * 100.0)) / 100.0;
 }
 
 /*
-	RENDER_CURRENT_READINGS_IPHONE()
-	--------------------------------
+	RENDER_HTML_HEAD_IPHONE()
+	-------------------------
 */
-usb_weather_reading *render_current_readings_iphone(usb_weather *station)
+void render_html_head_iphone(usb_weather *station, long readings)
 {
-static long z_to_font[] = {49, 49, 49, 65, 72, 65, 72, 76, 76, 72, 78, 86, 86, 84, 80, 76, 109, 71, 71, 83, 87, 80, 85, 81, 83, 81, 122};
-usb_weather_reading *readings;
-uint8_t year, month, day, hour, minute;
-int sun_hour, sun_minute;
-int daylight_savings, barometric_state;
-long z_number;
-usb_weather_fixed_block_1080 *fixed_block;
-usb_weather_reading *deltas, *long_deltas, highs, lows, *got_high_low;
-double wind_direction, barometric_delta, dew_point;
 char *msie;
-long mins_since_sunrise;
-
-if ((readings = station->read_current_readings()) == NULL)
-	exit(printf("Cannot read current readings\n"));
-
-long_deltas = station->read_hourly_delta();				// "near-hour" deltas
-deltas = station->interpolate_hourly_delta(long_deltas);	// interpolate "near-hour" deltas into hourly deltas
-got_high_low = station->read_highs_and_lows(&highs, &lows);
-
-fixed_block = station->read_fixed_block();
 
 puts("<html>");
 puts("<head>");
 
+/*
+	Apple Webapp
+*/
 puts("<meta name=\"apple-mobile-web-app-capable\" content=\"yes\">");
 puts("<meta name=\"apple-mobile-web-app-title\" content=\"ScarbaWeather\">");
 puts("<meta name=\"apple-mobile-web-app-status-bar-style\" content=\"black\">");
@@ -94,12 +78,25 @@ puts("<link rel=\"apple-touch-startup-image\" href=\"startup.png\">");
 //puts("<meta id=\"viewport\" name=\"viewport\" content=\"initial-scale=0.70\">");
 puts("<meta id=\"viewport\" name=\"viewport\" content=\"initial-scale=0.1\">");
 
-puts("<script type=\"text/javascript\" src=\"https://www.google.com/jsapi\"></script>");
-puts("<script type=\"text/javascript\">");
-puts("google.load(\"visualization\", \"1\", {packages:[\"corechart\"]});");
-render_historic_readings(station, OUTSIDE_TEMPERATURE | RAINFALL | WINDGUST);
-puts("</script>");
+/*
+	Google graphs
+*/
+if (readings != NONE)
+	{
+	puts("<script type=\"text/javascript\" src=\"https://www.google.com/jsapi\"></script>");
+	puts("<script type=\"text/javascript\">");
+	puts("google.load(\"visualization\", \"1\", {packages:[\"corechart\"]});");
+	render_historic_readings(station, readings);
+	puts("</script>");
+	}
+/*
+	render all links in the web app
+*/
+puts("<script>(function(a,b,c){if(c in b&&b[c]){var d,e=a.location,f=/^(a|html)$/i;a.addEventListener(\"click\",function(a){d=a.target;while(!f.test(d.nodeName))d=d.parentNode;\"href\"in d&&(d.href.indexOf(\"http\")||~d.href.indexOf(e.host))&&(a.preventDefault(),e.href=d.href)},!1)}})(document,window.navigator,\"standalone\")</script>");
 
+/*
+	resize to fit screen
+*/
 puts("<script type=\"text/javascript\">");
 puts("if (window.screen.availHeight == 460)");			// iPhone 4
 puts("	document.getElementById(\"viewport\").setAttribute(\"content\", \"initial-scale=0.32\");");
@@ -109,6 +106,9 @@ puts("else");											// iPhone 5?
 puts("	document.getElementById(\"viewport\").setAttribute(\"content\", \"initial-scale=0.3\");");
 puts("</script>");
 
+/*
+	Fonts
+*/
 puts("<style>");
 puts("@font-face {");
 puts("    font-family: 'weather';");
@@ -221,6 +221,112 @@ puts("	}");
 
 puts("</style>");
 puts("</head>");
+}
+
+/*
+	RENDER_HTML_TAIL_IPHONE()
+	-------------------------
+*/
+void render_html_tail_iphone(void)
+{
+printf("<table cellpadding=0 cellspacing=0 border=0 width=100%% style=\"position:absolute;bottom:0;\">");
+printf("<tr>");
+printf("<td align=center><span class=symbol><span class=huge><a href=%s?action=temperature>&#8216;</a></span></span></td>", getenv("SCRIPT_NAME"));
+printf("<td align=center><span class=symbol><span class=huge><a href=%s?action=rain>&#77;</a></span></span></td>", getenv("SCRIPT_NAME"));
+printf("<td align=center><span class=symbol><span class=huge><a href=%s?action=wind>&#69;</a></span></span></td>", getenv("SCRIPT_NAME"));
+printf("<td align=center><span class=symbol><span class=huge><a href=%s?action=humidity>&#71;</a></span></span></td>", getenv("SCRIPT_NAME"));
+printf("<td align=center><span class=symbol><span class=huge><a href=%s?action=pressure>&#88;</a></span></span></td>", getenv("SCRIPT_NAME"));
+printf("<td align=center><span class=symbol><span class=huge><a href=%s>*</a></span></span></td>", getenv("SCRIPT_NAME"));
+printf("</tr>");
+printf("</table>");
+
+puts("</body>");
+puts("</html>");
+}
+
+/*
+	RENDER_HISTORIC_READINGS_IPHONE()
+	---------------------------------
+*/
+long render_historic_readings_iphone(usb_weather *station, long what_to_read)
+{
+render_html_head_iphone(station, what_to_read);
+
+puts("<body>");
+if (what_to_read & OUTSIDE_TEMPERATURE)
+	{
+	puts("<div style=\"font-size:60pt;\"><center>Outside Temperature</center></div>");
+	puts("<table><tr><td><div id=\"chart_div_outdoor_temperature\" style=\"width: 1100px; height: 1250px;\"></div></td></tr></table>");
+	}
+if (what_to_read & INSIDE_TEMPERATURE)
+	{
+	puts("<div style=\"font-size:60pt;\"><center>Inside Temperature</center></div>");
+	puts("<table><tr><td><div id=\"chart_div_indoor_temperature\" style=\"width: 1100px; height: 1250px;\"></div></td></tr></table>");
+	}
+if (what_to_read & OUTSIDE_HUMIDITY)
+	{
+	puts("<div style=\"font-size:60pt;\"><center>Outside Humidity</center></div>");
+	puts("<table><tr><td><div id=\"chart_div_outdoor_humidity\" style=\"width: 1100px; height: 1250px;\"></div></td></tr></table>");
+	}
+if (what_to_read & INSIDE_HUMIDITY)
+	{
+	puts("<div style=\"font-size:60pt;\"><center>Inside Humidity</center></div>");
+	puts("<table><tr><td><div id=\"chart_div_indoor_humidity\" style=\"width: 1100px; height: 1250px;\"></div></td></tr></table>");
+	}
+if (what_to_read & RAINFALL)
+	{
+	puts("<div style=\"font-size:60pt;\"><center>Rainfall</center></div>");
+	puts("<table><tr><td><div id=\"chart_div_rain\" style=\"width: 1100px; height: 1250px;\"></div></td></tr></table>");
+	}
+if (what_to_read & WINDSPEED)
+	{
+	puts("<div style=\"font-size:60pt;\"><center>Windspeed</center></div>");
+	puts("<table><tr><td><div id=\"chart_div_windspeed\" style=\"width: 1100px; height: 550px;\"></div></td></tr></table>");
+	}
+if (what_to_read & WINDGUST)
+	{
+	puts("<div style=\"font-size:60pt;\"><center>Wind Gusts</center></div>");
+	puts("<table><tr><td><div id=\"chart_div_gust\" style=\"width: 1100px; height: 550px;\"></div></td></tr></table>");
+	}
+if (what_to_read & PRESSURE)
+	{
+	puts("<div style=\"font-size:60pt;\"><center>Absolute Pressure</center></div>");
+	puts("<table><tr><td><div id=\"chart_div_pressure\" style=\"width: 1100px; height: 1250px;\"></div></td></tr></table>");
+	}
+
+render_html_tail_iphone();
+
+return 0;
+}
+
+/*
+	RENDER_CURRENT_READINGS_IPHONE()
+	--------------------------------
+*/
+usb_weather_reading *render_current_readings_iphone(usb_weather *station)
+{
+static long z_to_font[] = {49, 49, 49, 65, 72, 65, 72, 76, 76, 72, 78, 86, 86, 84, 80, 76, 109, 71, 71, 83, 87, 80, 85, 81, 83, 81, 122};
+usb_weather_reading *readings;
+uint8_t year, month, day, hour, minute;
+int sun_hour, sun_minute;
+int daylight_savings, barometric_state;
+long z_number;
+usb_weather_fixed_block_1080 *fixed_block;
+usb_weather_reading *deltas, *long_deltas, highs, lows, *got_high_low;
+double wind_direction, barometric_delta, dew_point;
+char *msie;
+long mins_since_sunrise;
+
+if ((readings = station->read_current_readings()) == NULL)
+	exit(printf("Cannot read current readings\n"));
+
+long_deltas = station->read_hourly_delta();				// "near-hour" deltas
+deltas = station->interpolate_hourly_delta(long_deltas);	// interpolate "near-hour" deltas into hourly deltas
+got_high_low = station->read_highs_and_lows(&highs, &lows);
+
+fixed_block = station->read_fixed_block();
+
+render_html_head_iphone(station, NONE);
 
 puts("<body>");
 puts("<table cellpadding=0 cellspacing=0 border=0 width=100%>");
@@ -309,7 +415,7 @@ z_number = weather_math::zambretti_pywws(sealevel_pressure, month, wind_directio
 printf("<tr><td align=center class=\"megahuge\">&#%d;</td></tr>", z_to_font[z_number]);
 
 int trend = weather_math::pressure_trend(deltas->absolute_pressure);
-printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%*.*s</span>%0.2fhPa (%s)</td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", sealevel_pressure, weather_math::zambretti_name(z_number));
+printf("<tr><td align=center><span class=\"arrowfont\">%*.*s</span>%0.2fhPa (%s)</td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", sealevel_pressure, weather_math::zambretti_name(z_number));
 
 /*
 	Inside temperature and humidity
@@ -321,21 +427,9 @@ if (!readings->lost_communications)
 	printf("Dewpoint:%0.0f&deg;C, ", dew_point);
 	}
 printf("Inside:%0.0f&deg;C, %0.0f%%</td></tr></table></td></tr>", readings->indoor_temperature, readings->indoor_humidity);
-printf("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%%><tr><td align=left><span class=symbol><span class=huge><a href=%s?action=temp>&#8216;</a></class></class></td><td align=center><span class=symbol><span class=huge><a href=%s?action=wind>&#69;</a></class></class></td><td align=center><span class=symbol><span class=huge><a href=%s?action=rain>&#71;</a></class></class></td><td align=right><span class=symbol><span class=huge><a href=%s>*</a></span></span></td></tr></table></td></tr>", getenv("SCRIPT_NAME"), getenv("SCRIPT_NAME"), getenv("SCRIPT_NAME"), getenv("SCRIPT_NAME")); /* Temperature |  Wind | Ranifall | Reload */
 puts("</table>");
 
-/*
-	Graphs
-*/
-puts("<table><tr><td><div id=\"chart_div_outdoor_temperature\" style=\"width: 1000px; height: 500px;\"></div></td></tr></table>");
-puts("<table><tr><td><div id=\"chart_div_rain\" style=\"width: 1000px; height: 500px;\"></div></td></tr></table>");
-puts("<table><tr><td><div id=\"chart_div_gust\" style=\"width: 1000px; height: 500px;\"></div></td></tr></table>");
-
-/*
-	Done
-*/
-puts("</body>");
-puts("</html>");
+render_html_tail_iphone();
 
 return readings;
 }
@@ -442,11 +536,16 @@ for (current = 0; current < elements; current++)
 printf("var options =\n");
 printf("	{\n");
 printf("	title: '%s',\n", title);
-printf("	hAxis: {title: '%s'},\n", x_title);
-printf("	vAxis: {title: '%s'},\n", y_title);
-printf("	lineWidth: 1,\n");
+printf("	fontName:\"euphemiaucas\",");
+printf("	hAxis: {/*title: '%s', titleTextStyle: {fontSize: 45, italic:false}, */ textStyle: {fontSize: 29}},\n", x_title);
+printf("	vAxis: {title: '%s', titleTextStyle: {fontSize: 45, italic:false}, textStyle: {fontSize: 29}},\n", y_title);
+printf("	titleTextStyle: {fontSize:50, bold:false},\n");
+printf("	lineWidth: 3,\n");
 printf("	legend: 'none',\n");
-printf("	series: {0:{color: 'black', pointSize:1}, 1:{color: 'black', pointSize:4}}");
+
+puts("	chartArea: {top:14, height:'90%'},");
+
+printf("	series: {0:{color: 'black', pointSize:1}, 1:{color: 'black', pointSize:8}}");
 printf("	};\n");
 printf("var chart = new google.visualization.ScatterChart(document.getElementById('chart_div_%s'));\n", name);
 printf("chart.draw(data, options);\n");
@@ -632,7 +731,7 @@ if ((what_to_render & RAINFALL) != 0)
 			}
 		sum += history[current]->delay;
 		}
-	render_html_graph("rain", "Showers", "Time", "millimetres", readings, timeline, data, mins_since_midnight);
+	render_html_graph("rain", "Rainfall", "Time", "Millimetres", readings, timeline, data, mins_since_midnight);
 	}
 
 /*
@@ -699,7 +798,7 @@ if ((what_to_render & WINDSPEED) != 0)
 	for (current = readings - 1; current >= 0; current--)
 		if (!history[current]->lost_communications)
 			data[current] = weather_math::knots(history[current]->average_windspeed);
-	render_html_graph("windspeed", "Wind Speed", "Time", "Knots", readings, timeline, data, mins_since_midnight);
+	render_html_graph("windspeed", "Average Wind Speed", "Time", "Knots", readings, timeline, data, mins_since_midnight);
 	}
 
 if ((what_to_render & WINDGUST) != 0)
@@ -726,6 +825,7 @@ int main(int argc, char *argv[])
 usb_weather station;
 usb_weather_reading *current = NULL;
 usb_weather_reading **historic = NULL;
+char *query_string;
 
 puts("Content-type: text/html\n");
 
@@ -733,7 +833,19 @@ if (station.connect(USB_WEATHER_VID, USB_WEATHER_PID) == 0)
 	{
 	if (mode == MODE_IPHONE)
 		{
-		current = render_current_readings_iphone(&station);
+		if ((query_string = getenv("QUERY_STRING")) != NULL)
+			if (strstr(query_string, "temperature") != NULL)
+				return render_historic_readings_iphone(&station, OUTSIDE_TEMPERATURE);
+			else if (strstr(query_string, "wind") != NULL)
+				return render_historic_readings_iphone(&station, WINDSPEED | WINDGUST);
+			else if (strstr(query_string, "rain") != NULL)
+				return render_historic_readings_iphone(&station, RAINFALL);
+			else if (strstr(query_string, "humidity") != NULL)
+				return render_historic_readings_iphone(&station, OUTSIDE_HUMIDITY);
+			else if (strstr(query_string, "pressure") != NULL)
+				return render_historic_readings_iphone(&station, PRESSURE);
+
+		render_current_readings_iphone(&station);
 		}
 	else
 		{

@@ -222,17 +222,17 @@ const char *weather_math::beaufort_name(long beaufort)
 static const char *message[] =
 	{
 	"Calm",
-	"Light Air",
-	"Light Breeze",
-	"Gentle Breeze",
-	"Moderate Breeze",
-	"Fresh Breeze",
-	"Strong Breeze",
-	"Moderate Gale",
+	"Light air",
+	"Light breeze",
+	"Gentle breeze",
+	"Moderate breeze",
+	"Fresh breeze",
+	"Strong breeze",
+	"Moderate gale",
 	"Gale",
-	"Strong Gale",
+	"Strong gale",
 	"Storm",
-	"Voilent Storm",
+	"Voilent storm",
 	"Hurricane"
 	};
 
