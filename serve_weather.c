@@ -98,7 +98,6 @@ puts("<script type=\"text/javascript\" src=\"https://www.google.com/jsapi\"></sc
 puts("<script type=\"text/javascript\">");
 puts("google.load(\"visualization\", \"1\", {packages:[\"corechart\"]});");
 render_historic_readings(station, OUTSIDE_TEMPERATURE | RAINFALL | WINDGUST);
-//render_historic_readings(station, OUTSIDE_TEMPERATURE);
 puts("</script>");
 
 puts("<script type=\"text/javascript\">");
@@ -267,9 +266,7 @@ if (!readings->lost_communications)
 	else
 		printf("<tr><td align=center class=\"medium\">%0.2fKn gusts to %0.2fKn (%s)</td></tr>", weather_math::knots(readings->average_windspeed), weather_math::knots(readings->gust_windspeed), weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
 
-
-
-	puts("<tr><td class=\"space\">&nbsp;</td></tr>");
+	puts("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
 
 	/*
 		Outdoor temperature, humidity, rainfall
@@ -313,18 +310,18 @@ printf("<tr><td align=center class=\"megahuge\">&#%d;</td></tr>", z_to_font[z_nu
 
 int trend = weather_math::pressure_trend(deltas->absolute_pressure);
 printf("<tr><td align=center class=\"tiny\"><span class=\"arrowfont\">%*.*s</span>%0.2fhPa (%s)</td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", sealevel_pressure, weather_math::zambretti_name(z_number));
-printf("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
 
 /*
 	Inside temperature and humidity
 */
-printf("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%%><tr><td>&nbsp;</td><td align=center class=\"medium\">(");
+printf("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%%><tr><td align=center class=\"medium\">");
 if (!readings->lost_communications)
 	{
 	dew_point = weather_math::dewpoint(readings->outdoor_temperature, readings->outdoor_humidity);
 	printf("Dewpoint:%0.0f&deg;C, ", dew_point);
 	}
-printf("Inside:%0.0f&deg;C, %0.0f%%)</td><td align=right><span class=symbol><span class=huge><a href=%s>*</a></span></span></td></tr></table></td></tr>", readings->indoor_temperature, readings->indoor_humidity, getenv("SCRIPT_NAME"));
+printf("Inside:%0.0f&deg;C, %0.0f%%</td></tr></table></td></tr>", readings->indoor_temperature, readings->indoor_humidity);
+printf("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%%><tr><td align=left><span class=symbol><span class=huge><a href=%s?action=temp>&#8216;</a></class></class></td><td align=center><span class=symbol><span class=huge><a href=%s?action=wind>&#69;</a></class></class></td><td align=center><span class=symbol><span class=huge><a href=%s?action=rain>&#71;</a></class></class></td><td align=right><span class=symbol><span class=huge><a href=%s>*</a></span></span></td></tr></table></td></tr>", getenv("SCRIPT_NAME"), getenv("SCRIPT_NAME"), getenv("SCRIPT_NAME"), getenv("SCRIPT_NAME")); /* Temperature |  Wind | Ranifall | Reload */
 puts("</table>");
 
 /*
@@ -735,7 +732,9 @@ puts("Content-type: text/html\n");
 if (station.connect(USB_WEATHER_VID, USB_WEATHER_PID) == 0)
 	{
 	if (mode == MODE_IPHONE)
+		{
 		current = render_current_readings_iphone(&station);
+		}
 	else
 		{
 		render_html_header();
