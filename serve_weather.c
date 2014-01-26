@@ -229,6 +229,8 @@ puts("</head>");
 */
 void render_html_tail_iphone(void)
 {
+puts("<body>");
+
 printf("<table cellpadding=0 cellspacing=0 border=0 width=100%% style=\"position:absolute;bottom:0;\">");
 printf("<tr>");
 printf("<td align=center><span class=symbol><span class=huge><a href=%s?action=temperature>&#8216;</a></span></span></td>", getenv("SCRIPT_NAME"));
@@ -252,7 +254,6 @@ long render_historic_readings_iphone(usb_weather *station, long what_to_read)
 {
 render_html_head_iphone(station, what_to_read);
 
-puts("<body>");
 if (what_to_read & OUTSIDE_TEMPERATURE)
 	{
 	puts("<div style=\"font-size:60pt;\"><center>Outside Temperature</center></div>");
@@ -328,22 +329,25 @@ fixed_block = station->read_fixed_block();
 
 render_html_head_iphone(station, NONE);
 
-puts("<body>");
-puts("<table cellpadding=0 cellspacing=0 border=0 width=100%>");
 
+puts("<body>");
+
+puts("<table cellpadding=0 cellspacing=0 border=0 width=100%>");
 /*
-	Sunrise, 24hour low,  Moon, and 24 hour hight, and Sunset
+	Sunrise, 24-Hour low, Moon, 24-Hour high, and Sunset
 */
 puts("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%><tr>");
 daylight_savings = weather_math::is_daylight_saving();
 fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
 weather_math::sunrise(&sun_hour, &sun_minute, year + 2000, month, day, latitude, longitude, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
 printf("<td align=left><span class=\"symbol\">7</span>%02d:%02d</td>", sun_hour, sun_minute);
+
 if (got_high_low)
 	printf("<td align=center>%0.0f&deg;C</td>", lows.outdoor_temperature);
 
 uint8_t moon_phase = (weather_math::phase_of_moon(2000 + year, month, day) / 29.0) * 26.0;
 printf("<td align=center><span class=\"moon\">%c</span></td>", 'A' + moon_phase);
+
 if (got_high_low)
 	printf("<td align=center>%0.0f&deg;C</td>", highs.outdoor_temperature);
 
@@ -357,7 +361,10 @@ puts("</tr>");
 puts("<tr><td align=center>");
 fixed_block->current_time.text_render();
 puts("</b><br></td></tr>");
+puts("</table>");
 
+
+puts("<table cellpadding=0 cellspacing=0 border=0 width=100%>");
 if (!readings->lost_communications)
 	{
 	/*
