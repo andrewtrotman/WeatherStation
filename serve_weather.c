@@ -345,7 +345,7 @@ printf("<td align=left><span class=\"symbol\">7</span>%02d:%02d</td>", sun_hour,
 if (got_high_low)
 	printf("<td align=center>%0.0f&deg;C</td>", lows.outdoor_temperature);
 
-uint8_t moon_phase = (weather_math::phase_of_moon(2000 + year, month, day) / 29.0) * 26.0;
+uint8_t moon_phase = (weather_math::phase_of_moon(2000 + year, month, day) / 30.0) * 26.0;
 printf("<td align=center><span class=\"moon\">%c</span></td>", 'A' + moon_phase);
 
 if (got_high_low)
