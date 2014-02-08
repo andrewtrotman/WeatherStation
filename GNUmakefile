@@ -22,7 +22,7 @@ install:
 	sudo cp artill_clean_icons-webfont.* /var/www
 	sudo cp moon_phases-webfont.* /var/www
 	sudo cp apple-touch-icon.png /var/www
-	sudo cp startup.png /var/www
+	sudo cp startup.jpg /var/www
 
 clean:
 	rm *.obj *.exe *.ilk *.pdb *.suo *.bak *.o read_weather.app serve_weather.app a.out
