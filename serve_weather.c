@@ -682,6 +682,7 @@ if (station.connect(USB_WEATHER_VID, USB_WEATHER_PID) == 0)
 else
 	{
 	render_html_head_iphone(NULL, NONE);
+	puts("<body background=/background.jpg>");
 	printf("Cannot find an attached weather station<br>");
 	render_html_tail_iphone();
 	}

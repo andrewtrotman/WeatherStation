@@ -18,13 +18,28 @@ DDK_INCLUDE = $(DDK_DIR)\ddk -I$(DDK_DIR)\api -I$(DDK_DIR)\crt
 DDK_LIB = c:\WinDDK\7600.16385.1\lib\wxp\i386\setupapi.lib c:\WinDDK\7600.16385.1\lib\wxp\i386\hid.lib
 !ENDIF
 
+CC = @cl
+CFLAGS = /nologo /Zi /I$(DDK_INCLUDE)
+
+.c.obj :
+	$(CC) $(CFLAGS) /c /Tp $<
+
 all : read_weather.exe serve_weather.exe
 
-read_weather.exe : read_weather.c usb_weather_datetime.c usb_weather_reading.c usb_weather_fixed_block_1080.c usb_weather.c usb_weather_datetime.h usb_weather_reading.h usb_weather_fixed_block_1080.h usb_weather.h
-	@cl /nologo /Zi /I$(DDK_INCLUDE) /Tp read_weather.c /Tp usb_weather_datetime.c /Tp usb_weather_reading.c /Tp usb_weather_fixed_block_1080.c /Tp usb_weather.c /X -I$(DDK_INCLUDE) $(DDK_LIB)
+OBJECTS = 								\
+	usb_weather_datetime.obj 			\
+	usb_weather_reading.obj 			\
+	usb_weather_fixed_block_1080.obj	\
+	usb_weather.obj						\
+	weather_math.obj					\
+	mutex.obj
 
-serve_weather.exe : serve_weather.c usb_weather_datetime.c usb_weather_reading.c usb_weather_fixed_block_1080.c usb_weather.c weather_math.c usb_weather_datetime.h usb_weather_reading.h usb_weather_fixed_block_1080.h usb_weather.h weather_math.h
-	@cl /nologo /Zi /I$(DDK_INCLUDE) /Tp serve_weather.c /Tp usb_weather_datetime.c /Tp usb_weather_reading.c /Tp usb_weather_fixed_block_1080.c /Tp usb_weather.c /Tp weather_math.c /X -I$(DDK_INCLUDE) $(DDK_LIB)
+
+read_weather.exe : read_weather.c $(OBJECTS)
+	$(CC) $(CFLAGS) /Tp read_weather.c $(OBJECTS) /X -I$(DDK_INCLUDE) $(DDK_LIB)
+
+serve_weather.exe : serve_weather.c
+	$(CC) $(CFLAGS) /Tp serve_weather.c $(OBJECTS) /X -I$(DDK_INCLUDE) $(DDK_LIB)
 
 clean:
 	del *.obj *.exe *.ilk *.pdb *.suo *.bak

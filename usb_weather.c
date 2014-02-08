@@ -8,6 +8,7 @@
 #include "usb_weather.h"
 #include "usb_weather_message.h"
 #include "usb_weather_reading_raw.h"
+#include "mutex_blocker.h"
 
 #ifdef _MSC_VER
 	extern "C"
@@ -55,6 +56,7 @@ usb_weather::usb_weather()
 {
 hDevice = INVALID_HANDLE_VALUE;
 fixed_block = NULL;
+device_mutex = new mutex("usb_weather");
 }
 
 /*
@@ -72,6 +74,7 @@ if (hDevice != INVALID_HANDLE_VALUE)
 	#endif
 	}
 delete fixed_block;
+delete device_mutex;
 }
 
 #ifdef _MSC_VER
@@ -89,6 +92,7 @@ delete fixed_block;
 	SP_DEVICE_INTERFACE_DETAIL_DATA *detail_data = NULL;
 	HIDD_ATTRIBUTES attributes;
 	long found = false;
+	mutex_blocker blocker(device_mutex);
 
 	/*
 		Get the GUID of the Windows HID class so that we can identify HID devices
@@ -168,6 +172,8 @@ delete fixed_block;
 		Linux versions of the USB methods
 	*/
 
+	uint8_t hid_report_number = 0;
+
 	/*
 		USB_WEATHER::CONNECT()
 		----------------------
@@ -178,6 +184,7 @@ delete fixed_block;
 	struct hidraw_devinfo device;
 	long id;
 	int file;
+	mutex_blocker blocker(device_mutex);
 
 	hDevice = INVALID_HANDLE_VALUE;
 	for (id = 0; id < 1024; id++)
@@ -197,9 +204,6 @@ delete fixed_block;
 		}
 	return 2;				// Can't find an attached weather station
 	}
-
-
-	uint8_t hid_report_number = 0;
 
 	/*
 		READFILE()
@@ -259,6 +263,7 @@ uint8_t *into = (uint8_t *)result;
 usb_weather_message message;
 DWORD dwBytes = 0, dwBytesToRead;
 long long remaining;
+mutex_blocker blocker(device_mutex);
 
 message.zero = 0;
 message.report_id = message.aux_report_id = 0xa1;
