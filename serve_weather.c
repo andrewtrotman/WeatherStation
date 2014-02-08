@@ -235,7 +235,8 @@ puts("</head>");
 */
 void render_html_tail_iphone(void)
 {
-puts("<body>");
+//puts("<body background=/background.jpg>");
+
 
 printf("<table cellpadding=0 cellspacing=0 border=0 width=100%% style=\"position:absolute;bottom:0;\">");
 printf("<tr>");
@@ -301,6 +302,7 @@ if (what_to_read & PRESSURE)
 	puts("<table><tr><td><div id=\"chart_div_pressure\" style=\"width: 1100px; height: 1250px;\"></div></td></tr></table>");
 	}
 
+puts("<body background=/background.jpg>");
 render_html_tail_iphone();
 
 return 0;
@@ -336,7 +338,7 @@ fixed_block = station->read_fixed_block();
 render_html_head_iphone(station, NONE);
 
 
-puts("<body>");
+puts("<body background=/background.jpg>");
 
 puts("<table cellpadding=0 cellspacing=0 border=0 width=100%>");
 /*
