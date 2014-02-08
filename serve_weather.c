@@ -181,12 +181,16 @@ puts("	}");
 puts(".moon");
 puts("	{");
 puts("	font-family:moon_phasesregular;");
-puts("	filter:  progid:DXImageTransform.Microsoft.BasicImage(rotation=2);");  /* IE6,IE7 */
-puts("	ms-filter: \"progid:DXImageTransform.Microsoft.BasicImage(rotation=2)\";"); /* IE8 */
-puts("	-moz-transform: rotate(-180deg);");  /* FF3.5+ */
-puts("	-o-transform: rotate(-180deg);");  /* Opera 10.5 */
-puts("	-webkit-transform: rotate(-180deg);");  /* Safari 3.1+, Chrome */
-puts("	position: absolute; ");
+
+#ifdef NEVER
+	puts("	filter:  progid:DXImageTransform.Microsoft.BasicImage(rotation=2);");  /* IE6,IE7 */
+	puts("	ms-filter: \"progid:DXImageTransform.Microsoft.BasicImage(rotation=2)\";"); /* IE8 */
+	puts("	-moz-transform: rotate(-180deg);");  /* FF3.5+ */
+	puts("	-o-transform: rotate(-180deg);");  /* Opera 10.5 */
+	puts("	-webkit-transform: rotate(-180deg);");  /* Safari 3.1+, Chrome */
+	puts("	position: absolute; ");
+#endif
+
 if (msie)
 	puts("	font-size:20pt;");
 else
