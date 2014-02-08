@@ -30,13 +30,6 @@ double height_above_sea_level_in_m = 184;
 enum {NONE = 0, OUTSIDE_TEMPERATURE = 0x01, INSIDE_TEMPERATURE = 0x02, OUTSIDE_HUMIDITY = 0x04, INSIDE_HUMIDITY = 0x08, RAINFALL = 0x10, WINDSPEED = 0x20, WINDGUST = 0x40, PRESSURE = 0x80, ALL = 0xFF};
 
 /*
-	what are we rendering on
-*/
-#define MODE_IPHONE 0
-#define MODE_PC 1
-static const int mode = MODE_IPHONE;
-
-/*
 	These are the USB VID and PID of the weather station I've got
 */
 #define USB_WEATHER_VID 0x1941			// Dream Link (in my case DIGITECH)
@@ -442,67 +435,6 @@ return readings;
 }
 
 /*
-	RENDER_HTML_HEADER()
-	--------------------
-*/
-void render_html_header(void)
-{
-puts("<html>");
-puts("<head>");
-puts("<script type=\"text/javascript\" src=\"https://www.google.com/jsapi\"></script>");
-puts("<script type=\"text/javascript\">");
-puts("google.load(\"visualization\", \"1\", {packages:[\"corechart\"]});");
-puts("google.load(\"visualization\", \"1\", {packages:[\"gauge\"]});");
-}
-
-/*
-	RENDER_HTML_FOOTER()
-	--------------------
-*/
-void render_html_footer(usb_weather *station, usb_weather_fixed_block_1080 *fixed_block, usb_weather_reading *current, usb_weather_reading **historic)
-{
-uint8_t year, month, day, hour, minute;
-int sun_hour, sun_minute;
-int daylight_savings;
-
-puts("</script>");
-puts("</head>");
-puts("<body>");
-puts("<b>Current Readings</b><br>");
-printf("<b><font size=-1>");
-fixed_block->current_time.text_render();
-printf(":", current->delay);
-printf(" (%ld minutes ago)</font></b><br>", current->delay);
-
-daylight_savings = weather_math::is_daylight_saving();
-
-fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
-weather_math::sunrise(&sun_hour, &sun_minute, year + 2000, month, day, latitude, longitude, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
-printf("<b><font size=-1>Sun Rise: %d:%d", sun_hour, sun_minute);
-
-weather_math::sunset(&sun_hour, &sun_minute, year + 2000, month, day, latitude, longitude, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
-printf(" Set: %d:%d</font></b><br>", sun_hour, sun_minute);
-
-puts("<table><tr>");
-puts("<td><div id='current_temperature'></div></td>");
-puts("<td><div id='current_humidity'></div></td>");
-puts("<td><div id='current_wind'></div></td>");
-puts("<td><div id='current_pressure'></div></td>");
-puts("<td><div id='current_rain'></div></td>");
-puts("</tr></table>");
-puts("<hr>");
-puts("<b>Historic Readings</b><br>");
-puts("<table>");
-puts("<tr><td><div id=\"chart_div_outdoor_temperature\" style=\"width: 450px; height: 250px;\"></div></td><td><div id=\"chart_div_rain\" style=\"width: 450px; height: 250px;\"></div></td></tr>");
-puts("<tr><td><div id=\"chart_div_pressure\" style=\"width: 450px; height: 250px;\"></div></td><td><div id=\"chart_div_indoor_temperature\" style=\"width: 450px; height: 250px;\"></div></td></tr>");
-puts("<tr><td><div id=\"chart_div_outdoor_humidity\" style=\"width: 450px; height: 250px;\"></div></td><td><div id=\"chart_div_indoor_humidity\" style=\"width: 450px; height: 250px;\"></div></tr>");
-puts("<tr><td><div id=\"chart_div_windspeed\" style=\"width: 450px; height: 250px;\"></div></td><td><div id=\"chart_div_gust\" style=\"width: 450px; height: 250px;\"></div></tr>");
-puts("</table>");
-puts("</body>");
-puts("</html>");
-}
-
-/*
 	RENDER_HTML_GRAPH()
 	-------------------
 */
@@ -557,123 +489,6 @@ printf("	};\n");
 printf("var chart = new google.visualization.ScatterChart(document.getElementById('chart_div_%s'));\n", name);
 printf("chart.draw(data, options);\n");
 printf("}\n\n");
-}
-
-/*
-	RENDER_CURRENT_READINGS()
-	-------------------------
-*/
-usb_weather_reading *render_current_readings(usb_weather *station)
-{
-usb_weather_reading *readings;
-uint32_t width = 400, height = 120;
-
-readings = station->read_current_readings();
-if (readings == NULL)
-	exit(printf("Cannot read current readings\n"));
-
-puts("google.setOnLoadCallback(draw_current_stats);");
-puts("function draw_current_stats()");
-puts("{");
-
-/*
-	Indoor and Outdoor temperature
-*/
-printf("var temperature = google.visualization.arrayToDataTable([['Label', 'Value']");
-printf(", ['Out Temp C', %0.2f]", readings->outdoor_temperature);
-printf(", ['In Temp C', %0.2f]", readings->indoor_temperature);
-puts("]);");
-
-puts("var temperature_options =");
-puts("	{");
-printf("	width: %ld,\n", width);
-printf("	height: %ld,\n", height);
-puts("	min: -10,");
-puts("	max: 50,");
-puts("	redFrom: -10,");
-puts("	redTo: 0,");
-puts("	majorTicks: ['-10', '0', '10', '20', '30', '40', '50'],");
-puts("	minorTicks: 2");
-puts("	};");
-puts("var chart = new google.visualization.Gauge(document.getElementById('current_temperature'));");
-puts("chart.draw(temperature, temperature_options);");
-
-/*
-	Indoor and Outdoor humidity
-*/
-printf("var humidity = google.visualization.arrayToDataTable([['Label', 'Value']");
-printf(", ['Out Humid %%', %0.2f]", readings->outdoor_humidity);
-printf(", ['In Humid %%', %0.2f]", readings->indoor_humidity);
-puts("]);");
-
-puts("var humidity_options =");
-puts("	{");
-printf("	width: %ld,\n", width);
-printf("	height: %ld,\n", height);
-puts("	min: 0,");
-puts("	max: 100,");
-puts("	majorTicks: ['0', '20', '40', '60', '80', '100'],");
-puts("	minorTicks: 4");
-puts("	};");
-puts("var chart = new google.visualization.Gauge(document.getElementById('current_humidity'));");
-puts("chart.draw(humidity, humidity_options);");
-
-/*
-	Absolute Pressure
-*/
-printf("var pressure = google.visualization.arrayToDataTable([['Label', 'Value']");
-printf(", ['Abs Press hPa', %0.2f]", readings->absolute_pressure);
-puts("]);");
-
-puts("var pressure_options =");
-puts("	{");
-printf("	width: %ld,\n", width);
-printf("	height: %ld,\n", height);
-puts("	min: 950,");
-puts("	max: 1100,");
-puts("	majorTicks: ['950', '1000', '1050', '1100'],");
-puts("	minorTicks: 6");
-puts("	};");
-puts("var chart = new google.visualization.Gauge(document.getElementById('current_pressure'));");
-puts("chart.draw(pressure, pressure_options);");
-
-/*
-	Wind
-*/
-printf("var wind = google.visualization.arrayToDataTable([['Label', 'Value']");
-printf(", ['Wind kn', %0.2f]", weather_math::knots(readings->average_windspeed));
-puts("]);");
-
-puts("var wind_options =");
-puts("	{");
-printf("	width: %ld,\n", width);
-printf("	height: %ld,\n", height);
-puts("	min: 0,");
-printf("	redFrom: %0.2f,\n", weather_math::knots(readings->average_windspeed));
-printf("	redTo: %0.2f\n", weather_math::knots(readings->gust_windspeed));
-puts("	};");
-puts("var chart = new google.visualization.Gauge(document.getElementById('current_wind'));");
-puts("chart.draw(wind, wind_options);");
-
-/*
-	Rainfall
-*/
-printf("var rain = google.visualization.arrayToDataTable([['Label', 'Value']");
-printf(", ['Rain mm', %0.2f]", readings->total_rain);
-puts("]);");
-
-puts("var rain_options =");
-puts("	{");
-printf("	width: %ld,\n", width);
-printf("	height: %ld,\n", height);
-puts("	min: 0");
-puts("	};");
-puts("var chart = new google.visualization.Gauge(document.getElementById('current_rain'));");
-puts("chart.draw(rain, rain_options);");
-
-puts("}");
-
-return readings;
 }
 
 /*
@@ -838,32 +653,26 @@ puts("Content-type: text/html\n");
 
 if (station.connect(USB_WEATHER_VID, USB_WEATHER_PID) == 0)
 	{
-	if (mode == MODE_IPHONE)
-		{
-		if ((query_string = getenv("QUERY_STRING")) != NULL)
-			if (strstr(query_string, "temperature") != NULL)
-				return render_historic_readings_iphone(&station, OUTSIDE_TEMPERATURE);
-			else if (strstr(query_string, "wind") != NULL)
-				return render_historic_readings_iphone(&station, WINDSPEED | WINDGUST);
-			else if (strstr(query_string, "rain") != NULL)
-				return render_historic_readings_iphone(&station, RAINFALL);
-			else if (strstr(query_string, "humidity") != NULL)
-				return render_historic_readings_iphone(&station, OUTSIDE_HUMIDITY);
-			else if (strstr(query_string, "pressure") != NULL)
-				return render_historic_readings_iphone(&station, PRESSURE);
+	if ((query_string = getenv("QUERY_STRING")) != NULL)
+		if (strstr(query_string, "temperature") != NULL)
+			return render_historic_readings_iphone(&station, OUTSIDE_TEMPERATURE);
+		else if (strstr(query_string, "wind") != NULL)
+			return render_historic_readings_iphone(&station, WINDSPEED | WINDGUST);
+		else if (strstr(query_string, "rain") != NULL)
+			return render_historic_readings_iphone(&station, RAINFALL);
+		else if (strstr(query_string, "humidity") != NULL)
+			return render_historic_readings_iphone(&station, OUTSIDE_HUMIDITY);
+		else if (strstr(query_string, "pressure") != NULL)
+			return render_historic_readings_iphone(&station, PRESSURE);
 
-		render_current_readings_iphone(&station);
-		}
-	else
-		{
-		render_html_header();
-		current = render_current_readings(&station);
-		historic = render_historic_readings(&station, ALL);
-		render_html_footer(&station, station.read_fixed_block(), current, historic);
-		}
+	render_current_readings_iphone(&station);
 	}
 else
-	exit(printf("Cannot find an attached weather station\n"));
+	{
+	render_html_head_iphone(NULL, NONE);
+	printf("Cannot find an attached weather station<br>");
+	render_html_tail_iphone();
+	}
 
 return 0;
 }
