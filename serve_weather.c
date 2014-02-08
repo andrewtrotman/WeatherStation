@@ -235,9 +235,6 @@ puts("</head>");
 */
 void render_html_tail_iphone(void)
 {
-//puts("<body background=/background.jpg>");
-
-
 printf("<table cellpadding=0 cellspacing=0 border=0 width=100%% style=\"position:absolute;bottom:0;\">");
 printf("<tr>");
 printf("<td align=center><span class=symbol><span class=huge><a href=%s?action=temperature>&#8216;</a></span></span></td>", getenv("SCRIPT_NAME"));
