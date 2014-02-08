@@ -66,7 +66,7 @@ puts("<head>");
 puts("<meta name=\"apple-mobile-web-app-capable\" content=\"yes\">");
 puts("<meta name=\"apple-mobile-web-app-title\" content=\"ScarbaWeather\">");
 puts("<meta name=\"apple-mobile-web-app-status-bar-style\" content=\"black\">");
-puts("<link rel=\"apple-touch-startup-image\" href=\"/startup.png\">");
+puts("<link href=\"/startup.png\" media=\"(device-width: 320px) and (device-height: 480px) and (-webkit-device-pixel-ratio: 2)\" rel=\"apple-touch-startup-image\">");
 
 //puts("<meta id=\"viewport\" name=\"viewport\" content=\"initial-scale=0.70\">");
 puts("<meta id=\"viewport\" name=\"viewport\" content=\"initial-scale=0.1\">");
