@@ -137,6 +137,7 @@ if ((msie = getenv("HTTP_USER_AGENT")) != NULL)
 puts("html, body");
 puts("	{");
 puts("	font-family:calibri,euphemiaucas;");
+puts("	color:white;");
 if (msie)
 	puts("	font-size:18pt;");
 else
@@ -222,7 +223,7 @@ puts("	}");
 puts("A:link, A:visited, A:active, A:hover ");
 puts("	{");
 puts("	text-decoration: none;");
-puts("	color: black;");
+puts("	color: white;");
 puts("	}");
 
 puts("</style>");
@@ -488,15 +489,14 @@ printf("var options =\n");
 printf("	{\n");
 printf("	title: '%s',\n", title);
 printf("	fontName:\"euphemiaucas\",");
-printf("	hAxis: {/*title: '%s', titleTextStyle: {fontSize: 45, italic:false}, */ textStyle: {fontSize: 29}},\n", x_title);
-printf("	vAxis: {title: '%s', titleTextStyle: {fontSize: 45, italic:false}, textStyle: {fontSize: 29}},\n", y_title);
+printf("	hAxis: {baselineColor:'white', textStyle: {fontSize: 29, color:'white'}, gridlines: {color:'white'}},\n", x_title);
+printf("	vAxis: {baselineColor:'white', title: '%s', titleTextStyle: {fontSize: 45, italic:false, color:'white'}, textStyle: {fontSize: 29, color:'white'}, gridlines:{color:'white'}},\n", y_title);
 printf("	titleTextStyle: {fontSize:50, bold:false},\n");
 printf("	lineWidth: 3,\n");
 printf("	legend: 'none',\n");
-
-puts("	chartArea: {top:14, height:'90%'},");
-
-printf("	series: {0:{color: 'black', pointSize:1}, 1:{color: 'black', pointSize:8}}");
+printf("	backgroundColor: {fill: 'transparent'},\n");
+printf("	chartArea: {top:14, height:'90%'},");
+printf("	series: {0:{color: 'white', pointSize:1}, 1:{color: 'white', pointSize:8}}");
 printf("	};\n");
 printf("var chart = new google.visualization.ScatterChart(document.getElementById('chart_div_%s'));\n", name);
 printf("chart.draw(data, options);\n");
