@@ -454,6 +454,7 @@ return readings;
 void render_html_graph(const char *name, const char *title, const char *x_title, const char *y_title, long elements, long *timeline, double *data, long mins_since_midnight)
 {
 long current, hours, mins, when;
+char *msie;
 
 printf("google.setOnLoadCallback(drawChart_%s);\n", name);
 
@@ -485,6 +486,9 @@ for (current = 0; current < elements; current++)
 		}
 	}
 
+if ((msie = getenv("HTTP_USER_AGENT")) != NULL)
+	msie = strstr(msie, "MSIE");
+
 printf("var options =\n");
 printf("	{\n");
 printf("	title: '%s',\n", title);
@@ -494,7 +498,10 @@ printf("	vAxis: {baselineColor:'white', title: '%s', titleTextStyle: {fontSize: 
 printf("	titleTextStyle: {fontSize:50, bold:false},\n");
 printf("	lineWidth: 3,\n");
 printf("	legend: 'none',\n");
-printf("	backgroundColor: {fill: 'transparent'},\n");
+if (msie)
+	printf("	backgroundColor: {fill:'DarkBlue'},\n");
+else
+	printf("	backgroundColor: {fill:'transparent'},\n");
 printf("	chartArea: {top:14, height:'90%'},");
 printf("	series: {0:{color: 'white', pointSize:1}, 1:{color: 'white', pointSize:8}}");
 printf("	};\n");
@@ -660,10 +667,11 @@ usb_weather station;
 usb_weather_reading *current = NULL;
 usb_weather_reading **historic = NULL;
 char *query_string;
+long code;
 
 puts("Content-type: text/html\n");
 
-if (station.connect(USB_WEATHER_VID, USB_WEATHER_PID) == 0)
+if ((code = station.connect(USB_WEATHER_VID, USB_WEATHER_PID)) == 0)
 	{
 	if ((query_string = getenv("QUERY_STRING")) != NULL)
 		if (strstr(query_string, "temperature") != NULL)
@@ -683,7 +691,25 @@ else
 	{
 	render_html_head_iphone(NULL, NONE);
 	puts("<body background=/background.jpg>");
-	printf("Cannot find an attached weather station<br>");
+	switch (code)
+		{
+		case 1:
+			printf("Cannot connect to the attached weather station<br>");
+			break;
+		case 2:
+			printf("Cannot find an attached weather station<br>");
+			break;
+		case 3:
+			printf("Cannot read from the attached weather station<br>");
+			break;
+		case 4:
+			printf("Weather station is currently busy<br>");
+			break;
+		default:
+			printf("Cannot find an attached weather station<br>");
+			break;
+		}
+
 	render_html_tail_iphone();
 	}
 

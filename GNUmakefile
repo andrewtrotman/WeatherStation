@@ -5,16 +5,27 @@
 #
 
 CC = $(CXX)
-CFLAGS = $(CXXFLAGS) -g
+CFLAGS = $(CXXFLAGS) -g -pthread
 
 #
 all : read_weather.app serve_weather.app
 
-read_weather.app : read_weather.c usb_weather_datetime.c usb_weather_reading.c usb_weather_fixed_block_1080.c usb_weather.c usb_weather_datetime.h usb_weather_reading.h usb_weather_fixed_block_1080.h usb_weather.h
-	$(CC) $(CFLAGS) -o read_weather.app read_weather.c usb_weather_datetime.c usb_weather_reading.c usb_weather_fixed_block_1080.c usb_weather.c 
+%.o:%.c
+	$(CC) $(CFLAGS) -c $<
 
-serve_weather.app : serve_weather.c usb_weather_datetime.c usb_weather_reading.c usb_weather_fixed_block_1080.c usb_weather.c weather_math.c usb_weather_datetime.h usb_weather_reading.h usb_weather_fixed_block_1080.h usb_weather.h weather_math.h
-	$(CC) $(CFLAGS) -o serve_weather.app serve_weather.c usb_weather_datetime.c usb_weather_reading.c usb_weather_fixed_block_1080.c usb_weather.c weather_math.c 
+OBJECTS = 				\
+	usb_weather_datetime.o 		\
+	usb_weather_reading.o 		\
+	usb_weather_fixed_block_1080.o 	\
+	usb_weather.o 			\
+	weather_math.o 
+
+
+read_weather.app : read_weather.c $(OBJECTS)
+	$(CC) $(CFLAGS) -o read_weather.app read_weather.c $(OBJECTS)
+
+serve_weather.app : serve_weather.c $(OBJECTS)
+	$(CC) $(CFLAGS) -o serve_weather.app serve_weather.c $(OBJECTS)
 
 install:
 	sudo cp serve_weather.app /usr/lib/cgi-bin/serve_weather.app

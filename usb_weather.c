@@ -5,10 +5,12 @@
 	Licensed BSD
 */
 #include <float.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <sys/file.h>
 #include "usb_weather.h"
 #include "usb_weather_message.h"
 #include "usb_weather_reading_raw.h"
-#include "mutex_blocker.h"
 
 #ifdef _MSC_VER
 	extern "C"
@@ -56,7 +58,6 @@ usb_weather::usb_weather()
 {
 hDevice = INVALID_HANDLE_VALUE;
 fixed_block = NULL;
-device_mutex = new mutex("usb_weather");
 }
 
 /*
@@ -70,11 +71,11 @@ if (hDevice != INVALID_HANDLE_VALUE)
 	#ifdef _MSC_VER
 		CloseHandle(hDevice);
 	#else
+		flock(hDevice, LOCK_UN);
 		close(hDevice);
 	#endif
 	}
 delete fixed_block;
-delete device_mutex;
 }
 
 #ifdef _MSC_VER
@@ -92,7 +93,6 @@ delete device_mutex;
 	SP_DEVICE_INTERFACE_DETAIL_DATA *detail_data = NULL;
 	HIDD_ATTRIBUTES attributes;
 	long found = false;
-	mutex_blocker blocker(device_mutex);
 
 	/*
 		Get the GUID of the Windows HID class so that we can identify HID devices
@@ -183,8 +183,7 @@ delete device_mutex;
 	char message_buffer[32];
 	struct hidraw_devinfo device;
 	long id;
-	int file;
-	mutex_blocker blocker(device_mutex);
+	int file, got;
 
 	hDevice = INVALID_HANDLE_VALUE;
 	for (id = 0; id < 1024; id++)
@@ -192,15 +191,27 @@ delete device_mutex;
 		sprintf(message_buffer, "/dev/hidraw%ld", id);
 		if ((file = open(message_buffer, O_RDWR)) == -1)
 			return 1;		// can't connect to the weather station
-		else if (ioctl(file, HIDIOCGRAWINFO, &device) >= 0 && (uint16_t)device.vendor == (uint16_t)vid && (uint16_t)device.product == (uint16_t)pid)
+		else 
 			{
-			hDevice = file;
-			if (read_fixed_block() == NULL)
-				return 3;	// cannot read the fixed block.
-			return 0;
-			}
-		else
+			do
+				{
+				if ((got = flock(file, LOCK_EX | LOCK_NB)) != 0)
+					{
+					if (errno == EWOULDBLOCK)
+						return 4;			// would block (another process is using the device)
+					}
+				}
+			while (got != 0);
+			if (ioctl(file, HIDIOCGRAWINFO, &device) >= 0 && (uint16_t)device.vendor == (uint16_t)vid && (uint16_t)device.product == (uint16_t)pid)
+				{
+				hDevice = file;
+				if (read_fixed_block() == NULL)
+					return 3;	// cannot read the fixed block.
+				return 0;
+				}
+			flock(file, LOCK_UN);
 			close(file);
+			}
 		}
 	return 2;				// Can't find an attached weather station
 	}
@@ -263,7 +274,6 @@ uint8_t *into = (uint8_t *)result;
 usb_weather_message message;
 DWORD dwBytes = 0, dwBytesToRead;
 long long remaining;
-mutex_blocker blocker(device_mutex);
 
 message.zero = 0;
 message.report_id = message.aux_report_id = 0xa1;

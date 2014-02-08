@@ -31,8 +31,7 @@ OBJECTS = 								\
 	usb_weather_reading.obj 			\
 	usb_weather_fixed_block_1080.obj	\
 	usb_weather.obj						\
-	weather_math.obj					\
-	mutex.obj
+	weather_math.obj
 
 
 read_weather.exe : read_weather.c $(OBJECTS)

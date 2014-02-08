@@ -18,7 +18,6 @@
 #include "fundamental_types.h"
 #include "usb_weather_fixed_block_1080.h"
 #include "usb_weather_reading.h"
-#include "mutex.h"
 
 /*
 	class USB_WEATHER
@@ -29,7 +28,6 @@ class usb_weather
 private:
 	HANDLE hDevice;
 	usb_weather_fixed_block_1080 *fixed_block;
-	mutex *device_mutex;
 
 protected:
 	uint32_t read(uint16_t address, void *result);
