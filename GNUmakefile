@@ -23,7 +23,7 @@ install:
 	sudo cp moon_phases-webfont.* /var/www
 	sudo cp apple-touch-icon.png /var/www
 	sudo cp startup.jpg /var/www
-	#sudo cp background.jpg /var/www
+	sudo cp background.jpg /var/www
 
 clean:
 	rm *.o read_weather.app serve_weather.app 
