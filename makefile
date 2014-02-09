@@ -31,6 +31,7 @@ OBJECTS = 								\
 	usb_weather_reading.obj 			\
 	usb_weather_fixed_block_1080.obj	\
 	usb_weather.obj						\
+	usb_weather_cache.obj				\
 	weather_math.obj
 
 

@@ -13,11 +13,12 @@ all : read_weather.app serve_weather.app
 %.o:%.c
 	$(CC) $(CFLAGS) -c $<
 
-OBJECTS = 				\
-	usb_weather_datetime.o 		\
-	usb_weather_reading.o 		\
+OBJECTS = 							\
+	usb_weather_datetime.o 			\
+	usb_weather_reading.o 			\
 	usb_weather_fixed_block_1080.o 	\
-	usb_weather.o 			\
+	usb_weather.o 					\
+	usb_weather_cache.o 			\
 	weather_math.o 
 
 

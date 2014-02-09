@@ -7,7 +7,6 @@
 #include <float.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <sys/file.h>
 #include "usb_weather.h"
 #include "usb_weather_message.h"
 #include "usb_weather_reading_raw.h"
@@ -22,6 +21,7 @@
 #else
 	#include <linux/hidraw.h>
 	#include <sys/ioctl.h>
+	#include <sys/file.h>
 	#include <fcntl.h>	
 	#include <stdio.h>
 	#include <unistd.h>

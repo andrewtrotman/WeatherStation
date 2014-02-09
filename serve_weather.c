@@ -10,7 +10,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "usb_weather.h"
+#include "usb_weather_cache.h"
 #include "usb_weather_datetime.h"
 #include "usb_weather_fixed_block_1080.h"
 #include "usb_weather_message.h"
@@ -663,7 +663,7 @@ return history;
 */
 int main(int argc, char *argv[])
 {
-usb_weather station;
+usb_weather_cache station;
 usb_weather_reading *current = NULL;
 usb_weather_reading **historic = NULL;
 char *query_string;
