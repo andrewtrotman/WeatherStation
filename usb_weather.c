@@ -275,6 +275,8 @@ usb_weather_message message;
 DWORD dwBytes = 0, dwBytesToRead;
 long long remaining;
 
+printf("\n***[READ:%d]***\n", address);
+
 message.zero = 0;
 message.report_id = message.aux_report_id = 0xa1;
 message.address_high = message.aux_address_high = (address >> 8) & 0xFF;

@@ -30,7 +30,7 @@ private:
 	usb_weather_fixed_block_1080 *fixed_block;
 
 protected:
-	uint32_t read(uint16_t address, void *result);
+	virtual uint32_t read(uint16_t address, void *result);
 
 public:
 	usb_weather();
