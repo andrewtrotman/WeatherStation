@@ -128,7 +128,7 @@ return temperature_in_c + 0.33 * vapour_pressure - 0.70 * windspeed_in_ms - 4.00
 /*
 	WEATHER_MATH::HEAT_INDEX()
 	--------------------------
-	There are pleanty of sources, including Wikipedia article "
+	There are pleanty of sources, including Wikipedia article "Heat Index"
 */
 double weather_math::heat_index(double temperature_in_c, double humidity)
 {
@@ -232,7 +232,7 @@ static const char *message[] =
 	"Gale",
 	"Strong gale",
 	"Storm",
-	"Voilent storm",
+	"Violent storm",
 	"Hurricane"
 	};
 
@@ -367,28 +367,28 @@ static const char *forecast[] =
 	"Settled fine",
 	"Fine weather",
 	"Becoming fine",
-	"Fine, becoming less settled",
-	"Fine, possible showers",
+	"Fine becoming less settled",
+	"Fine, poss showers",
 	"Fairly fine, improving",
-	"Fairly fine, possible showers early",
+	"Fairly fine, poss showers early",
 	"Fairly fine, showery later",
 	"Showery early, improving",
 	"Changeable, mending",
 	"Fairly fine, showers likely",
 	"Rather unsettled clearing later",
-	"Unsettled, probably improving",
+	"Unsettled, prob improving",
 	"Showery, bright intervals",
-	"Showery, becoming less settled",
+	"Showery, becoming more unsettled",
 	"Changeable, some rain",
 	"Unsettled, short fine intervals",
 	"Unsettled, rain later",
-	"Unsettled, some rain",
-	"Mostly very unsettled",
-	"Occasional rain, worsening",
-	"Rain at times, very unsettled",
+	"Unsettled, rain at times",
+	"Very unsettled, finer at times",
+	"Rain at times, worse later",
+	"Rain at times, becoming v. unsettled",
 	"Rain at frequent intervals",
-	"Rain, very unsettled",
-	"Stormy, may improve",
+	"Very unsettled, rain",
+	"Stormy, poss improving",
 	"Stormy, much rain",
 	"Truely exceptional weather"  // used for overflow or underflow... not a Zambretti code
 	};
