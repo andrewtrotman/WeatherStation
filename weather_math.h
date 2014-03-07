@@ -39,6 +39,9 @@ public:
 	static double cloud_temperature(double temperature_in_c, double humidity);
 	static long beaufort(double windspeed_in_ms);
 	static const char *beaufort_name(long beaufort);
+	static long saffir_simpson(double windspeed_in_ms);
+	static const char *saffir_simpson_name(long saffir_simpson_value);
+	static const char *wind_force_name(double windspeed_in_ms);
 	static long zambretti(double z_hpa, long z_month, long z_wind, long z_trend, long z_north = true, double z_baro_top = 1050, double z_baro_bottom = 950);
 	static long zambretti_pywws(double z_hpa, long z_month, long z_wind, long z_trend, long z_north = true, double z_baro_top = 1050, double z_baro_bottom = 950);
 	static const char *zambretti_name(long number);

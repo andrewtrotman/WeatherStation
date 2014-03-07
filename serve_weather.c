@@ -379,11 +379,11 @@ if (!readings->lost_communications)
 	printf("<tr><td align=center class=\"huge\">%s</td></tr>", weather_math::wind_direction_name(readings->wind_direction));
 
 	if (two_dp(readings->average_windspeed) == 0.00 && two_dp(readings->gust_windspeed) == 0.00)
-		printf("<tr><td align=center class=\"medium\">%s</td></tr>", weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
+		printf("<tr><td align=center class=\"medium\">%s</td></tr>", weather_math::wind_force_name(readings->average_windspeed));
 	else if (two_dp(readings->average_windspeed) == 0.00)
-		printf("<tr><td align=center class=\"medium\">Gusts to %0.2fKn (%s)</td></tr>", weather_math::knots(readings->gust_windspeed), weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
+		printf("<tr><td align=center class=\"medium\">Gusts to %0.2fKn (%s)</td></tr>", weather_math::knots(readings->gust_windspeed), weather_math::wind_force_name(readings->average_windspeed));
 	else
-		printf("<tr><td align=center class=\"medium\">%0.2fKn gusts to %0.2fKn (%s)</td></tr>", weather_math::knots(readings->average_windspeed), weather_math::knots(readings->gust_windspeed), weather_math::beaufort_name(weather_math::beaufort(readings->average_windspeed)));
+		printf("<tr><td align=center class=\"medium\">%0.2fKn gusts to %0.2fKn (%s)</td></tr>", weather_math::knots(readings->average_windspeed), weather_math::knots(readings->gust_windspeed), weather_math::wind_force_name(readings->average_windspeed));
 
 	puts("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
 

@@ -175,8 +175,8 @@ printf("Maximum total  :%0.2fmm ", ((high_nibble_rainfall & 0x0F) << 16 | maximu
 maximum_rain_total_when.text_render();
 puts("");
 
-printf("Alarm hourly   :%0.2fmm\n", alarm_rain_hourly);
-printf("Alarm daily    :%0.2fmm\n", alarm_rain_daily);
+printf("Alarm hourly   :%0.2fmm\n", alarm_rain_hourly / 10.0);
+printf("Alarm daily    :%0.2fmm\n", alarm_rain_daily / 10.0);
 
 puts("\nWIND");
 puts("----");

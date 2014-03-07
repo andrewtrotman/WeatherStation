@@ -77,8 +77,8 @@ return temperature_in_c + 273.15;
 	this equation will provide the vapor pressure value (in pressure units) where T is the air temperature in C
 	and RH is the relative humidity.
 	Now dewpoint, Td, can be found:
-	Numerator = 243.12*(ln v) – 440.1
-	Denominator = 19.43 – ln v
+	Numerator = 243.12*(ln v) - 440.1
+	Denominator = 19.43 - ln v
 	Td = Numerator/Denominator
 
 */
@@ -187,27 +187,27 @@ long weather_math::beaufort(double windspeed_in_ms)
 {
 if (windspeed_in_ms < 0.3)
 	return 0;
-if (windspeed_in_ms < 1.5)
+if (windspeed_in_ms <= 1.5)
 	return 1;
-if (windspeed_in_ms < 3.4)
+if (windspeed_in_ms <= 3.4)
 	return 2;
-if (windspeed_in_ms < 5.4)
+if (windspeed_in_ms <= 5.4)
 	return 3;
-if (windspeed_in_ms < 7.9)
+if (windspeed_in_ms <= 7.9)
 	return 4;
-if (windspeed_in_ms < 10.7)
+if (windspeed_in_ms <= 10.7)
 	return 5;
-if (windspeed_in_ms < 13.8)
+if (windspeed_in_ms <= 13.8)
 	return 6;
-if (windspeed_in_ms < 17.1)
+if (windspeed_in_ms <= 17.1)
 	return 7;
-if (windspeed_in_ms < 20.7)
+if (windspeed_in_ms <= 20.7)
 	return 8;
-if (windspeed_in_ms < 24.4)
+if (windspeed_in_ms <= 24.4)
 	return 9;
-if (windspeed_in_ms < 28.4)
+if (windspeed_in_ms <= 28.4)
 	return 10;
-if (windspeed_in_ms < 32.6)
+if (windspeed_in_ms <= 32.6)
 	return 11;
 
 return 12;
@@ -237,6 +237,67 @@ static const char *message[] =
 	};
 
 return message[beaufort];
+}
+
+/*
+	WEATHER_MATH::SAFFIR_SIMPSON()
+	------------------------------
+*/
+long weather_math::saffir_simpson(double windspeed_in_ms)
+{
+if (windspeed_in_ms <= 17)
+	return -1;
+if (windspeed_in_ms <= 32)
+	return 0;
+if (windspeed_in_ms <= 42)
+	return 1;
+if (windspeed_in_ms <= 49)
+	return 2;
+if (windspeed_in_ms <= 58)
+	return 3;
+if (windspeed_in_ms <= 70)
+	return 4;
+if (windspeed_in_ms <= 78)		// see the Wikipedia article, category 6 may no exist (or may start at 80m/s)
+	return 5;
+
+return 6;
+}
+
+/*
+	WEATHER_MATH::SAFFIR_SIMPSON_NAME()
+	-----------------------------------
+*/
+const char *weather_math::saffir_simpson_name(long saffir_simpson_value)
+{
+static const char *message[] =
+	{
+	"Tropical depression",
+	"Tropical storm",
+	"Category one",
+	"Category two",
+	"Category three",
+	"Category four",
+	"Category five",
+	"Category six"
+	};
+
+return message[saffir_simpson_value + 1]; // we add 1 becuause -1 is for "tropical depression" and only the positive numbers are hurricane forces
+}
+
+/*
+	WEATHER_MATH::WIND_FORCE_NAME()
+	-------------------------------
+*/
+const char *weather_math::wind_force_name(double windspeed_in_ms)
+{
+long hurricane_level;
+/*
+	Check whether we're in a hurricate, and if not then return the Braufort number
+*/
+if ((hurricane_level = saffir_simpson(windspeed_in_ms)) >= 1)
+	return saffir_simpson_name(hurricane_level);
+else
+	return beaufort_name(beaufort(windspeed_in_ms));
 }
 
 /*
@@ -430,7 +491,7 @@ return forecast[number];
 */
 long weather_math::zambretti(double z_hpa, long z_month, long z_wind, long z_trend, long z_north, double z_baro_top, double z_baro_bottom)
 {
-size_t choice;
+long choice;
 
 /*
 	Equivalents of Zambretti 'dial window' letters A - Z (with "26" added for overflow and underflow)
@@ -442,7 +503,7 @@ static long fall_options[]   = {25, 25, 25, 25, 25, 25, 25, 25, 23, 23, 21, 20, 
 /*
 	Equivelant of the huge cast in the beteljuice.com version
 */
-static long wind_scale[] = {6.0, 5.0, 5.0, 2.00, -0.5, -2.00, -5.0, -8.50, -12.0, -10.0, -6.0, -4.50, -3.0, -0.50, 1.5, 3.00};
+static double wind_scale[] = {6.0, 5.0, 5.0, 2.00, -0.5, -2.00, -5.0, -8.50, -12.0, -10.0, -6.0, -4.50, -3.0, -0.50, 1.5, 3.00};
 
 /*
 	How far through the scale are we?
@@ -464,11 +525,12 @@ z_option += wind_scale[z_wind] / 100.0;
 	Add the summer effect (if we're in summer)
 */
 if (z_north == (z_month >= 4 && z_month <= 9))
+	{
 	if (z_trend == RISE)
 		z_option += 7.0 / 100.0;
 	else if (z_trend == FALL)
 		z_option -= 7.0 / 100.0;
-
+	}
 choice = floor(z_option * 22.0);
 
 /*
