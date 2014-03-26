@@ -179,7 +179,7 @@ puts("	font-family:weather;");
 if (msie)
 	puts("	font-size:100pt;");
 else
-	puts("	font-size:380pt;");
+	puts("	font-size:200pt;");
 puts("	}");
 puts(".symbol");
 puts("	{");
@@ -432,17 +432,18 @@ barometric_delta = (sealevel_pressure - weather_math::pressure_to_sea_level_pres
 
 z_number = weather_math::zambretti_pywws(sealevel_pressure, month, wind_direction, barometric_delta, false);
 
-printf("<tr><td align=center class=\"megahuge\">&#%d;</td></tr>", z_to_font[z_number]);
+printf("<tr><td align=center><span class=medium>&nbsp;</span></td></tr>");
+printf("<tr><td align=center><table><tr><td valign=middle><span class=\"megahuge\">&#%d;</span></td>", z_to_font[z_number]);
 
-printf("<tr><td align=center class=\"large\">%s</td></tr>", weather_math::zambretti_name(z_number));
-printf("<tr><td align=center class=\"medium\">Rain at times, becoming v. unsettled</td></tr>", weather_math::zambretti_name(z_number));
+printf("<td valign=middle><span class=\"large\"> %s</span></td></tr></table></td></tr>", weather_math::zambretti_name(z_number));
 
 int trend = weather_math::pressure_trend(deltas->absolute_pressure);
-printf("<tr><td align=center><span class=\"arrowfont\">%*.*s</span>%0.2fhPa</td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", sealevel_pressure);
+printf("<tr><td align=center><span class=\"large\"><span class=\"arrowfont\">%*.*s</span>%0.2fhPa</spam></td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", sealevel_pressure);
 
 /*
 	Inside temperature and humidity
 */
+printf("<tr><td align=center><span class=halfspace>&nbsp;</span></td></tr>");
 printf("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%%><tr><td align=center class=\"medium\">");
 if (!readings->lost_communications)
 	{
