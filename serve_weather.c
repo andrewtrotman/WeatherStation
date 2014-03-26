@@ -434,8 +434,11 @@ z_number = weather_math::zambretti_pywws(sealevel_pressure, month, wind_directio
 
 printf("<tr><td align=center class=\"megahuge\">&#%d;</td></tr>", z_to_font[z_number]);
 
+printf("<tr><td align=center class=\"large\">%s</td></tr>", weather_math::zambretti_name(z_number));
+printf("<tr><td align=center class=\"medium\">Rain at times, becoming v. unsettled</td></tr>", weather_math::zambretti_name(z_number));
+
 int trend = weather_math::pressure_trend(deltas->absolute_pressure);
-printf("<tr><td align=center><span class=\"arrowfont\">%*.*s</span>%0.2fhPa (%s)</td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", sealevel_pressure, weather_math::zambretti_name(z_number));
+printf("<tr><td align=center><span class=\"arrowfont\">%*.*s</span>%0.2fhPa</td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", sealevel_pressure);
 
 /*
 	Inside temperature and humidity
