@@ -558,43 +558,22 @@ if ((what_to_render & RAINFALL) != 0)
 	sum = 0;
 	for (current = readings - 1; current >= 1; current--)
 		{
+		printf("%2.2f\n", history[current]->total_rain);
 		if (!history[current]->lost_communications)
 			{
 			timeline[current] = sum;
-			if (current == 1 && history[current]->total_rain == history[current - 1]->total_rain)
-				{
-				/*
-					Edge case:  We're at the start of the list and so if this and the previous are the same then it hasn't rained
-				*/
+			if (history[current]->total_rain == history[current - 1]->total_rain)
 				data[current] = 0;
-				}
-			else if (current >= 2 && history[current]->total_rain == history[current - 2]->total_rain)
-				{
-				/*
-					Not the edge case, but no rain recorded over the previous two readings (typically 1 hour)
-				*/
-				data[current] = 0;
-				}
 			else
 				{
+				printf("%2.2f != %2.2f\n", history[current]->total_rain, history[current - 2]->total_rain);
 				/*
 					We've seen rain, so first find the rain guage level at the begining of the shower
 				*/
 				initial_rain = history[0]->total_rain;
 				for (bucket = current; bucket >= 1; bucket--)
-					if (bucket == 1 && history[bucket]->total_rain == history[bucket - 1]->total_rain)
+					if (history[bucket]->total_rain == history[bucket - 1]->total_rain)
 						{
-						/*
-							edge case
-						*/
-						initial_rain = history[bucket]->total_rain;
-						break;
-						}
-					else if (bucket >= 2 && history[bucket]->total_rain == history[bucket - 2]->total_rain)
-						{
-						/*
-							no rain seen for two readings (an hour)
-						*/
 						initial_rain = history[bucket]->total_rain;
 						break;
 						}
