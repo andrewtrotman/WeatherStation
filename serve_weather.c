@@ -377,13 +377,16 @@ if (!readings->lost_communications)
 		Wind
 	*/
 	printf("<tr><td align=center class=\"huge\">%s</td></tr>", weather_math::wind_direction_name(readings->wind_direction));
+	
+	printf("<tr><td align=center class=\"huge\">%s</td></tr>", weather_math::wind_force_name(readings->average_windspeed));
+	printf("<tr><td align=center class=\"huge\">Tropical depression</td></tr>");
+	printf("<tr><td align=center class=\"huge\">Northnortheasterly</td></tr>");
 
-	if (two_dp(readings->average_windspeed) == 0.00 && two_dp(readings->gust_windspeed) == 0.00)
-		printf("<tr><td align=center class=\"medium\">%s</td></tr>", weather_math::wind_force_name(readings->average_windspeed));
-	else if (two_dp(readings->average_windspeed) == 0.00)
-		printf("<tr><td align=center class=\"medium\">Gusts to %0.2fKn (%s)</td></tr>", weather_math::knots(readings->gust_windspeed), weather_math::wind_force_name(readings->average_windspeed));
-	else
-		printf("<tr><td align=center class=\"medium\">%0.2fKn gusts to %0.2fKn (%s)</td></tr>", weather_math::knots(readings->average_windspeed), weather_math::knots(readings->gust_windspeed), weather_math::wind_force_name(readings->average_windspeed));
+	if (two_dp(readings->average_windspeed) != 0.00 || two_dp(readings->gust_windspeed) != 0.00)
+		if (two_dp(readings->average_windspeed) != 0.00)
+			printf("<tr><td align=center class=\"medium\">%0.2fKn gusts to %0.2fKn</td></tr>", weather_math::knots(readings->average_windspeed), weather_math::knots(readings->gust_windspeed));
+		else
+			printf("<tr><td align=center class=\"medium\">Gusts to %0.2fKn</td></tr>", weather_math::knots(readings->gust_windspeed));
 
 	puts("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
 
