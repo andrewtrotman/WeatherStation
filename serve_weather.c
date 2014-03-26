@@ -159,12 +159,19 @@ if (msie)
 else
 	puts("	font-size:40pt;");
 puts("	}");
+puts(".large");
+puts("	{");
+if (msie)
+	puts("	font-size:40pt;");
+else
+	puts("	font-size:70pt;");
+puts("	}");
 puts(".huge");
 puts("	{");
 if (msie)
 	puts("	font-size:40pt;");
 else
-	puts("	font-size:100pt;");
+	puts("	font-size:80pt;");
 puts("	}");
 puts(".megahuge");
 puts("	{");
@@ -377,10 +384,7 @@ if (!readings->lost_communications)
 		Wind
 	*/
 	printf("<tr><td align=center class=\"huge\">%s</td></tr>", weather_math::wind_direction_name(readings->wind_direction));
-	
-	printf("<tr><td align=center class=\"huge\">%s</td></tr>", weather_math::wind_force_name(readings->average_windspeed));
-	printf("<tr><td align=center class=\"huge\">Tropical depression</td></tr>");
-	printf("<tr><td align=center class=\"huge\">Northnortheasterly</td></tr>");
+	printf("<tr><td align=center class=\"large\">%s</td></tr>", weather_math::wind_force_name(readings->average_windspeed));
 
 	if (two_dp(readings->average_windspeed) != 0.00 || two_dp(readings->gust_windspeed) != 0.00)
 		if (two_dp(readings->average_windspeed) != 0.00)

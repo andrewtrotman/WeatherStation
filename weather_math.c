@@ -777,35 +777,35 @@ switch ((int)(angle / 22.5))
 	case 0:
 		return "Northerly";
 	case 1:
-		return "NNE";
+		return "Northnortheasterly";
 	case 2:
 		return "Northeasterly";
 	case 3:
-		return "ENE";
+		return "Eastnortheasterly";
 	case 4:
 		return "Easterly";
 	case 5:
-		return "ESE";
+		return "Eastsoutheasterly";
 	case 6:
 		return "Southeasterly";
 	case 7:
-		return "SSE";
+		return "Southsoutheasterly";
 	case 8:
 		return "Southerly";
 	case 9:
-		return "SSW";
+		return "Southsouthwesterly";
 	case 10:
 		return "Southwesterly";
 	case 11:
-		return "WSW";
+		return "Westsouthwesterly";
 	case 12:
 		return "Westerly";
 	case 13:
-		return "WNW";
+		return "Westnorthwesterly";
 	case 14:
 		return "Northwesterly";
 	case 15:
-		return "NNW";
+		return "Northnorthwesterly";
 	}
 return "No Wind";
 }
