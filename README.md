@@ -6,10 +6,15 @@ get a lovely disply of the data from the weather station.
 
 How to build and install
 1.  Install Apache 2
+
 2.  hg clone https://andrewtrotman@bitbucket.org/andrewtrotman/weatherstation
+
 3.  make
+
 4.  make install
+
 5.  plug in the weather station
+
 6.  connect to localhost/cgi-bin/serve_weather.app
 
 Enjoy.
