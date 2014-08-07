@@ -48,7 +48,26 @@ inline uint16_t decode(uint16_t value)
 	#endif
 #endif
 }
-inline int16_t decode(int16_t value) { return (int16_t)decode((uint16_t)value); }
+
+/*
+	DECODE()
+	--------
+*/
+inline int16_t decode(int16_t value)
+{
+return (int16_t)decode((uint16_t)value);
+}
+
+/*
+	DECODE_TEMPERATURE()
+	--------------------
+*/
+inline int16_t decode_temperature(int16_t value)
+{
+uint16_t temperature = decode((uint16_t)value);
+
+return temperature < 0x8000 ? temperature : -(temperature - 0x8000);
+}
 
 /*
 	USB_WEATHER::USB_WEATHER()
@@ -332,9 +351,9 @@ if (read(address, (uint8_t*)&buffer) == 0)
 answer = new usb_weather_reading;
 answer->delay = buffer.delay;
 answer->indoor_humidity = buffer.indoor_humidity;
-answer->indoor_temperature = decode(buffer.indoor_temperature) / 10.0;
+answer->indoor_temperature = decode_temperature(buffer.indoor_temperature) / 10.0;
 answer->outdoor_humidity = buffer.outdoor_humidity;
-answer->outdoor_temperature = decode(buffer.outdoor_temperature) / 10.0;
+answer->outdoor_temperature = decode_temperature(buffer.outdoor_temperature) / 10.0;
 answer->absolute_pressure = decode(buffer.absolute_pressure) / 10.0;
 answer->average_windspeed = (buffer.average_windspeed_low | (buffer.windspeed_high & 0x0F)) / 10.0;
 answer->gust_windspeed = (buffer.gust_windspeed_low | ((buffer.windspeed_high >> 4) & 0x0F)) / 10.0;
