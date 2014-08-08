@@ -1,13 +1,16 @@
 /*
 	WEATHER_MATH.C
 	--------------
-	Copyright (c) 2012-2013 Andrew Trotman
+	Copyright (c) 2012-2014 Andrew Trotman
+
+	Weather_math::frozenpoint() by Dion Tjandrawigena
 	Licensed BSD
 */
 #include <math.h>
 #include <string.h>
 #include <time.h>
 #include <stddef.h>
+#include <stdio.h>
 #ifdef _MSC_VER
 	#include <windows.h>
 #endif
@@ -439,14 +442,14 @@ static const char *forecast[] =
 	"Rather unsettled clearing later",
 	"Unsettled, prob improving",
 	"Showery, bright intervals",
-	"Showery, becoming more unsettled",
+	"Showery, bec more unsettled",			//	"Showery, becoming more unsettled",
 	"Changeable, some rain",
 	"Unsettled, short fine intervals",
 	"Unsettled, rain later",
 	"Unsettled, rain at times",
 	"Very unsettled, finer at times",
 	"Rain at times, worse later",
-	"Rain at times, becoming v. unsettled",
+	"Rain at times, bec v. unsettled",			// "Rain at times, becoming v. unsettled",
 	"Rain at frequent intervals",
 	"Very unsettled, rain",
 	"Stormy, poss improving",
@@ -817,4 +820,36 @@ return "No Wind";
 double weather_math::pressure_to_sea_level_pressure(double pressure_in_hpa, double temperature_in_c, double height_above_sea_level_in_m)
 {
 return pressure_in_hpa * pow((1.0 - (0.0065 * height_above_sea_level_in_m) / (temperature_in_c + 0.0065 * height_above_sea_level_in_m + 273.15)), -5.257);
+}
+
+/*
+	WEATHER_MATH::FROZENPOINT()
+	---------------------------
+	This code which estimates the "grass minimum temperature" (i.e. frost)
+	From:
+		http://wiki.crowe.co.nz/Frost.ashx
+		http://www.nzwine.com/assets/sm/upload/eb/fl/ot/sp/frost_review.pdf (p.15)
+		http://about.metservice.com/about-metservice/learning-centre/frost/
+
+	Tg = 1/3 (T + Td / 2) - c
+
+	where:
+		Tg = the forecast grass minimum temp. in C
+		T = the dry-bulb temp. in C at 15:00
+		Td = the dew-point temp. in C at 15:00
+		c = a constant relative to location;
+			in Canterbury it is 8 (May, Sep, Oct) or 9 (Jun, Aug)
+
+	In addition, there are certain cloud and wind conditions must be met:
+		1. the cloud amount is <1/4 of low or medium clouds and < 3/4 high clouds
+		2. the wind speed is < 5 kt from E or NE (wind off the sea) or < 7 kt from any other direction.
+*/
+double weather_math::frozenpoint(double temperature_in_c, double dewpoint_in_c, int month)
+{
+double c[] = {0, 0, 0, 0, 8, 9, 10, 9, 8, 8, 0, 0}; // Define constants between Jan and Dec in Otago
+
+if (month < 1 || month > 12)
+	return 0.0;
+
+return 1.0/3.0 * (temperature_in_c + dewpoint_in_c / 2) - c[month - 1];
 }

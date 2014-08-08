@@ -1,7 +1,7 @@
 /*
 	WEATHER_MATH.H
 	--------------
-	Copyright (c) 2012-2013 Andrew Trotman
+	Copyright (c) 2012-2014 Andrew Trotman
 	Licensed BSD
 */
 #ifndef WEATHER_MATH_H_
@@ -52,6 +52,7 @@ public:
 	static long is_daylight_saving(void);		// return true if humans are currently in daylight savings "mode"
 	static double pressure_to_sea_level_pressure(double pressure_in_hpa, double temperature_in_c, double height_above_sea_level_in_m);
 	static const char *wind_direction_name(double angle);
+	static double frozenpoint(double temperature_in_c, double dewpoint_in_c, int month);
 };
 
 #endif /* WEATHER_MATH_H_ */

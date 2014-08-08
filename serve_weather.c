@@ -1,7 +1,7 @@
 /*
 	SERVE_WEATHER.C
 	---------------
-	Copyright (c) 2013 Andrew Trotman
+	Copyright (c) 2013-2014 Andrew Trotman
 	Licensed BSD
 */
 #include <stdio.h>
@@ -39,6 +39,7 @@ enum {NONE = 0, OUTSIDE_TEMPERATURE = 0x01, INSIDE_TEMPERATURE = 0x02, OUTSIDE_H
 	Prototypes
 */
 usb_weather_reading **render_historic_readings(usb_weather *station, uint32_t what_to_render);
+long get_readings_at_time(usb_weather *station, usb_weather_reading *answer, long search_time_hour, long search_time_mins);
 
 /*
 	TWO_DP()
@@ -176,6 +177,8 @@ puts("	}");
 puts(".megahuge");
 puts("	{");
 puts("	font-family:weather;");
+puts(" display: table-cell;");
+puts(" vertical-align: middle;");
 if (msie)
 	puts("	font-size:100pt;");
 else
@@ -330,6 +333,8 @@ usb_weather_reading *deltas, *long_deltas, highs, lows, *got_high_low;
 double wind_direction, barometric_delta, dew_point;
 char *msie;
 long mins_since_sunrise;
+double minimum_grass_temp;
+usb_weather_reading three_pm;
 
 if ((readings = station->read_current_readings()) == NULL)
 	exit(printf("Cannot read current readings\n"));
@@ -342,10 +347,10 @@ fixed_block = station->read_fixed_block();
 
 render_html_head_iphone(station, NONE);
 
-
 puts("<body background=/background.jpg>");
 
 puts("<table cellpadding=0 cellspacing=0 border=0 width=100%>");
+
 /*
 	Sunrise, 24-Hour low, Moon, 24-Hour high, and Sunset
 */
@@ -359,7 +364,7 @@ if (got_high_low)
 	printf("<td align=center>%0.0f&deg;C</td>", lows.outdoor_temperature);
 
 uint8_t moon_phase = (weather_math::phase_of_moon(2000 + year, month, day) / 30.0) * 26.0;
-printf("<td align=center><span class=\"moon\">%c</span></td>", 'A' + moon_phase);
+printf("<td align=center><span class=\"moon\">%c</span></td>", 'A' + ((moon_phase + 13) % 26));	// the phase was half out!
 
 if (got_high_low)
 	printf("<td align=center>%0.0f&deg;C</td>", highs.outdoor_temperature);
@@ -392,8 +397,6 @@ if (!readings->lost_communications)
 		else
 			printf("<tr><td align=center class=\"medium\">Gusts to %0.2fKn</td></tr>", weather_math::knots(readings->gust_windspeed));
 
-	puts("<tr><td class=\"halfspace\">&nbsp;</td></tr>");
-
 	/*
 		Outdoor temperature, humidity, rainfall
 	*/
@@ -419,6 +422,7 @@ if (!readings->lost_communications)
 	puts("</tr>");
 	puts("</table></center></td></tr>");
 	}
+
 /*
 	Pressure and Prediction
 */
@@ -432,10 +436,9 @@ barometric_delta = (sealevel_pressure - weather_math::pressure_to_sea_level_pres
 
 z_number = weather_math::zambretti_pywws(sealevel_pressure, month, wind_direction, barometric_delta, false);
 
-printf("<tr><td align=center><span class=medium>&nbsp;</span></td></tr>");
-printf("<tr><td align=center><table><tr><td valign=middle><span class=\"megahuge\">&#%d;</span></td>", z_to_font[z_number]);
-
-printf("<td valign=middle><span class=\"large\"> %s</span></td></tr></table></td></tr>", weather_math::zambretti_name(z_number));
+printf("<tr><td align=center><span class=halfspace>&nbsp;</span></td></tr>");
+printf("<tr><td align=center><table><tr><td valign=middle><span class=\"megahuge\"><div style=\"position:relative;display:table-cell;vertical-align:middle;text-align:center;\">&#%d;</div></span></td>", z_to_font[z_number]);
+printf("<td valign=middle><span class=\"large\"><div style=\"position:relative;display:table-cell;vertical-align:middle;text-align:center;\"> %s</div></span></td></tr></table></td></tr>", weather_math::zambretti_name(z_number));
 
 int trend = weather_math::pressure_trend(deltas->absolute_pressure);
 printf("<tr><td align=center><span class=\"large\"><span class=\"arrowfont\">%*.*s</span>%0.2fhPa</spam></td></tr>", abs(trend) * 6, abs(trend) * 6, trend > 0 ? "&uarr;&uarr;&uarr;&uarr;" : "&darr;&darr;&darr;&darr;", sealevel_pressure);
@@ -451,6 +454,24 @@ if (!readings->lost_communications)
 	printf("Dewpoint:%0.0f&deg;C, ", dew_point);
 	}
 printf("Inside:%0.0f&deg;C, %0.0f%%</td></tr></table></td></tr>", readings->indoor_temperature, readings->indoor_humidity);
+
+/*
+	Compute the ground temperature and warn of frost if likely
+*/
+if (!readings->lost_communications)
+	{
+	printf("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%%><tr><td align=center class=\"medium\">");
+	get_readings_at_time(station, &three_pm, 15, 0);
+	minimum_grass_temp = weather_math::frozenpoint(three_pm.outdoor_temperature, weather_math::dewpoint(three_pm.outdoor_temperature, three_pm.outdoor_humidity), month);
+
+	//	the wind speed is < 5 kt from E or NE (wind off the sea) or < 7 kt from any other direction.
+	printf("Min Grass Temp:%0.0f&deg;C", minimum_grass_temp);
+
+	if (minimum_grass_temp < 0 && ((readings->average_windspeed < 7.0) || (readings->average_windspeed < 5 && (readings->wind_direction < 67.5))))
+		puts(": Frost Likely");
+
+	printf("</td></tr></table></td></tr>");
+	}
 puts("</table>");
 
 render_html_tail_iphone();
@@ -519,6 +540,85 @@ printf("	};\n");
 printf("var chart = new google.visualization.ScatterChart(document.getElementById('chart_div_%s'));\n", name);
 printf("chart.draw(data, options);\n");
 printf("}\n\n");
+}
+
+/*
+	GET_READINGS_AT_TIME()
+	----------------------
+	Return the closest reading we have to the specified time (given in 24 hour format)
+	Returns true if it found a reading
+*/
+long get_readings_at_time(usb_weather *station, usb_weather_reading *answer, long search_time_hour, long search_time_mins)
+{
+usb_weather_reading **history;
+long current;
+uint32_t readings;
+usb_weather_fixed_block_1080 *fixed_block;
+uint8_t year, month, day, hour, minute;
+long mins_since_midnight, readings_wanted;
+long search_best_mins = 24 * 60;
+long search_mins = search_time_hour * 60 + search_time_mins;
+long found = false;
+long sum;
+long *timeline;
+
+/*
+	Get the fixed block
+*/
+fixed_block = station->read_fixed_block();
+fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
+mins_since_midnight = hour * 60 + minute;
+
+/*
+	get the readings for the last 24 hours
+*/
+readings_wanted = (mins_since_midnight + (60 * 24)) / fixed_block->read_period;
+
+if ((history = station->read_all_readings(&readings, readings_wanted)) == NULL)
+	exit(printf("Cannot read historic readings\n"));
+
+/*
+	Construct the cumulative timeline
+*/
+//printf("[READ:%d]", readings);
+timeline = new long [readings];
+sum = 0;
+for (current = readings - 1; current >= 0; current--)
+	{
+	if (!history[current]->lost_communications)
+		timeline[current] = sum;
+	sum += history[current]->delay;
+	}
+
+/*
+	Find the give time (working backwards from now)
+*/
+for (current = 0; current < readings; current++)
+	{
+	long hours, mins, when;
+
+	if ((when = mins_since_midnight - timeline[current]) < 0)
+		when += (60 * 24);		// yesterday (or earlier)
+
+	hours = when / 60;
+	mins = when % 60;
+
+	if (abs(search_mins - (hours * 60 + mins)) < search_best_mins)
+		{
+		*answer = *history[current];
+		search_best_mins = abs(search_mins - (hours * 60 + mins));
+		found = true;
+		}
+	else
+		break;		// find the most recent specified time.
+	}
+
+/*
+	clean up and done
+*/
+delete [] timeline;
+
+return found;
 }
 
 /*
