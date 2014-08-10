@@ -338,12 +338,14 @@ usb_weather_reading *usb_weather::read_reading(uint16_t address)
 {
 usb_weather_reading *answer;
 usb_weather_reading_raw buffer;
+long trial;
+static const long MAX_TRIALS = 3;			// maximum number of attempts to read before timeout
 
-/*
-	Get the data
-*/
-if (read(address, (uint8_t*)&buffer) == 0)
-	return NULL;
+trial = 0;
+while ((read(address, (uint8_t*)&buffer) == 0) && (trial < MAX_TRIALS))
+	trial++;
+if (trial == MAX_TRIALS)
+	return NULL;							// failed to read from device so timeout
 
 /*
 	Convert it into human usable units
@@ -418,7 +420,10 @@ uint32_t current;
 	Do we have communications?
 */
 if (fixed_block == NULL)
+	{
+	*readings = 0;
 	return NULL;
+	}
 
 /*
 	How many readings to get

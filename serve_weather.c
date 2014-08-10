@@ -459,19 +459,19 @@ printf("Inside:%0.0f&deg;C, %0.0f%%</td></tr></table></td></tr>", readings->indo
 	Compute the ground temperature and warn of frost if likely
 */
 if (!readings->lost_communications)
-	{
-	printf("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%%><tr><td align=center class=\"medium\">");
-	get_readings_at_time(station, &three_pm, 15, 0);
-	minimum_grass_temp = weather_math::frozenpoint(three_pm.outdoor_temperature, weather_math::dewpoint(three_pm.outdoor_temperature, three_pm.outdoor_humidity), month);
+	if (get_readings_at_time(station, &three_pm, 15, 0))
+		{
+		printf("<tr><td><table cellpadding=0 cellspacing=0 border=0 width=100%%><tr><td align=center class=\"medium\">");
+		minimum_grass_temp = weather_math::frozenpoint(three_pm.outdoor_temperature, weather_math::dewpoint(three_pm.outdoor_temperature, three_pm.outdoor_humidity), month);
 
-	//	the wind speed is < 5 kt from E or NE (wind off the sea) or < 7 kt from any other direction.
-	printf("Min Grass Temp:%0.0f&deg;C", minimum_grass_temp);
+		//	the wind speed is < 5 kt from E or NE (wind off the sea) or < 7 kt from any other direction.
+		printf("Min Grass Temp:%0.0f&deg;C", minimum_grass_temp);
 
-	if (minimum_grass_temp < 0 && ((readings->average_windspeed < 7.0) || (readings->average_windspeed < 5 && (readings->wind_direction < 67.5))))
-		puts(": Frost Likely");
+		if (minimum_grass_temp < 0 && ((readings->average_windspeed < 7.0) || (readings->average_windspeed < 5 && (readings->wind_direction < 67.5))))
+			puts(": Frost Likely");
 
-	printf("</td></tr></table></td></tr>");
-	}
+		printf("</td></tr></table></td></tr>");
+		}
 puts("</table>");
 
 render_html_tail_iphone();
@@ -570,48 +570,51 @@ fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
 mins_since_midnight = hour * 60 + minute;
 
 /*
-	get the readings for the last 24 hours
+	get the readings for the last 25 hours, that way we can guarnatee to get the last reading the the specified time
 */
-readings_wanted = (mins_since_midnight + (60 * 24)) / fixed_block->read_period;
-
+readings_wanted = (60 * 25) / fixed_block->read_period;
 if ((history = station->read_all_readings(&readings, readings_wanted)) == NULL)
-	exit(printf("Cannot read historic readings\n"));
+	return false;
 
 /*
 	Construct the cumulative timeline
 */
-//printf("[READ:%d]", readings);
+//printf("[READ:%d]", readings); fflush(stdout);
 timeline = new long [readings];
 sum = 0;
 for (current = readings - 1; current >= 0; current--)
 	{
-	if (!history[current]->lost_communications)
-		timeline[current] = sum;
-	sum += history[current]->delay;
+	if (history[current] != NULL)
+		{
+		if (!history[current]->lost_communications)
+			timeline[current] = sum;
+		sum += history[current]->delay;
+		}
 	}
 
 /*
 	Find the give time (working backwards from now)
 */
 for (current = 0; current < readings; current++)
-	{
-	long hours, mins, when;
-
-	if ((when = mins_since_midnight - timeline[current]) < 0)
-		when += (60 * 24);		// yesterday (or earlier)
-
-	hours = when / 60;
-	mins = when % 60;
-
-	if (abs(search_mins - (hours * 60 + mins)) < search_best_mins)
+	if (history[current] != NULL && !history[current]->lost_communications)
 		{
-		*answer = *history[current];
-		search_best_mins = abs(search_mins - (hours * 60 + mins));
-		found = true;
+		long hours, mins, when;
+
+		if ((when = mins_since_midnight - timeline[current]) < 0)
+			when += (60 * 24);		// yesterday (or earlier)
+
+		hours = when / 60;
+		mins = when % 60;
+
+		if (abs(search_mins - (hours * 60 + mins)) < search_best_mins)
+			{
+			*answer = *history[current];
+			search_best_mins = abs(search_mins - (hours * 60 + mins));
+			found = true;
+			}
+		else
+			break;		// find the most recent specified time.
 		}
-	else
-		break;		// find the most recent specified time.
-	}
 
 /*
 	clean up and done
