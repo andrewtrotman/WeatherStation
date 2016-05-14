@@ -100,7 +100,7 @@ puts("	document.getElementById(\"viewport\").setAttribute(\"content\", \"initial
 puts("else if (window.screen.availHeight == 1004)");	// iPad
 puts("	document.getElementById(\"viewport\").setAttribute(\"content\", \"initial-scale=0.7\");");
 puts("else");											// iPhone 5?
-puts("	document.getElementById(\"viewport\").setAttribute(\"content\", \"initial-scale=0.3\");");
+puts("	document.getElementById(\"viewport\").setAttribute(\"content\", \"initial-scale=0.32\");");
 puts("</script>");
 
 /*

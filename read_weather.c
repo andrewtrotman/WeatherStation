@@ -111,6 +111,7 @@ int main(int argc, char *argv[])
 {
 usb_weather *station;
 long parameter;
+int connect_error;
 
 for (parameter = 1; parameter < argc; parameter++)
 	{
@@ -133,10 +134,14 @@ for (parameter = 1; parameter < argc; parameter++)
 	}
 
 station = new usb_weather;
-if (station->connect(USB_WEATHER_VID, USB_WEATHER_PID) == 0)
+if ((connect_error = station->connect(USB_WEATHER_VID, USB_WEATHER_PID)) == 0)
 	manage_weather_station(station);
 else
-	puts("Cannot find an attached weather station");
+	{
+	printf("Cannot find an attached weather station, Error:%d\n", connect_error);
+	if (connect_error == 1)
+		puts("Remember to sudo this program");
+	}
 delete station;
 
 return 0;
