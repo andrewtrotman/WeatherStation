@@ -332,7 +332,6 @@ usb_weather_fixed_block_1080 *fixed_block;
 usb_weather_reading *deltas, *long_deltas, highs, lows, *got_high_low;
 double wind_direction, barometric_delta, dew_point;
 char *msie;
-long mins_since_sunrise;
 double minimum_grass_temp;
 usb_weather_reading three_pm;
 
