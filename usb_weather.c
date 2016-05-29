@@ -19,6 +19,7 @@
 	#include <SetupAPI.h>
 	}
 #elif defined (__APPLE__)
+	#include <queue>
 #else
 	#include <linux/hidraw.h>
 	#include <sys/ioctl.h>
@@ -91,9 +92,7 @@ if (hDevice != INVALID_HANDLE_VALUE)
 	#ifdef _MSC_VER
 		CloseHandle(hDevice);
 	#elif defined (__APPLE__)
-		/*
-			FIX: Close the connection on the Mac
-		*/
+		IOHIDDeviceClose(hDevice, kIOHIDOptionsTypeNone);
 	#else
 		flock(hDevice, LOCK_UN);
 		close(hDevice);
@@ -192,6 +191,11 @@ delete fixed_block;
 		}
 	}
 #elif defined (__APPLE__)
+	uint8_t hid_report_number = 0;
+	void hid_init(IOHIDDeviceRef hDevice);
+	template <class T> T min(T a, T b) { return a < b ? a : b; }
+
+
 	/*
 		USB_WEATHER::CONNECT()
 		----------------------
@@ -218,6 +222,11 @@ delete fixed_block;
 	hid_manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
 
 	/*
+		Schedule the HID Manager into a MacOS X Main Run Loop.
+	*/
+	IOHIDManagerScheduleWithRunLoop(hid_manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+
+	/*
 		Enumerate all HID devices and count how many we have.
 	*/
 	IOHIDManagerSetDeviceMatching(hid_manager, NULL);
@@ -229,10 +238,7 @@ delete fixed_block;
 		Tell the user how many we found
 	*/
 	if (number_of_devices == 0)
-		{
-puts("NO HID DEVICE ON MAC");
 		return 1;		// puts("There are no HID devices attached - can't connect to weather station");
-		}
 	else
 		{
 		/*
@@ -265,7 +271,6 @@ puts("NO HID DEVICE ON MAC");
 			*/
 			if (vendor_id == vid && product_id == pid)
 				{
-puts("FOUND WEATHER STATION ON MAC");
 				found = true;
 				hDevice = *current;
 				}
@@ -279,21 +284,87 @@ puts("FOUND WEATHER STATION ON MAC");
 		}
 
 	if (found)
-		return 0;
-	else
 		{
-puts("NOT FOUND WEATHER STATION ON MAC");
-		return 2;	// puts("Cannot find an attached weather station");
+		if (IOHIDDeviceOpen(hDevice, kIOHIDOptionsTypeSeizeDevice) == kIOReturnSuccess)
+			hid_init(hDevice);
+
+		return 0;
 		}
+	else
+		return 2;	// puts("Cannot find an attached weather station");
+	}
+
+	/*
+		class MAC_HID_MESSAGE_OBJECT
+		----------------------------
+	*/
+	uint8_t mac_hid_buffer[1024 * 1024];
+	class mac_hid_message_object
+	{
+	public:
+		IOReturn result;
+		IOHIDReportType type;
+		uint32_t reportID;
+		uint8_t *report;
+		CFIndex reportLength;
+	} ;
+	std::queue<mac_hid_message_object *> message_queue;
+
+	/*
+		CALLBACK()
+		----------
+	*/
+	void callback(void *context, IOReturn result, void *sender, IOHIDReportType type, uint32_t reportID, uint8_t *report, CFIndex reportLength)
+	{
+	mac_hid_message_object *object;
+
+	object = new mac_hid_message_object;
+	object->result = result;
+	object->type = type;
+	object->reportID = reportID;
+	object->reportLength =reportLength;
+	object->report = new uint8_t [reportLength];
+	memcpy(object->report, report, reportLength);
+
+	message_queue.push(object);
+	}
+
+	/*
+		HID_INIT()
+		----------
+	*/
+	void hid_init(IOHIDDeviceRef hDevice)
+	{
+	IOHIDDeviceRegisterInputReportCallback(hDevice, mac_hid_buffer, sizeof(mac_hid_buffer), callback, NULL);
 	}
 
 	/*
 		READFILE()
 		----------
 	*/
-	long ReadFile(HANDLE hDevice, void *buffer, DWORD bytes_to_read, DWORD *bytes_read, void *ignore)
+	long ReadFile(HANDLE hDevice, void *recieve_buffer, DWORD to_read, DWORD *did_read, void *ignore)
 	{
-	return false;
+	uint8_t *into = (uint8_t *)recieve_buffer;
+	
+	mac_hid_message_object *object;
+
+	do
+		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, true);
+	while (message_queue.empty());
+
+	object = message_queue.front();
+	message_queue.pop();
+	
+	/*
+		For compatibility with windows we write the report number into the first byte of the reply
+	*/
+	memcpy(into + 1, object->report, *did_read = min(to_read, (DWORD)object->reportLength) + 1);
+	*into = hid_report_number;
+	
+	delete [] object->report;
+	delete object;
+
+	return true;
 	}
 
 	/*
@@ -302,7 +373,17 @@ puts("NOT FOUND WEATHER STATION ON MAC");
 	*/
 	long HidD_SetOutputReport(HANDLE hDevice, void *message, DWORD message_length)
 	{
-	return 0;
+	IOReturn return_code;
+	
+	hid_report_number = *(uint8_t *)message;
+
+	/*
+		When we send the report we don't need to unclude the hid_report_number because the Mac will pre-fix the message with the
+		report number for us (hence we skip over the first byte).
+	*/
+	return_code = IOHIDDeviceSetReport(hDevice, kIOHIDReportTypeOutput, hid_report_number, (uint8_t *)message + 1, message_length - 1);
+
+	return return_code == kIOReturnSuccess;
 	}
 
 #else

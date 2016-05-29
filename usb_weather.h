@@ -11,6 +11,7 @@
 	#include <Windows.h>
 #elif defined(__APPLE__)
 	#include <IOKit/hid/IOHIDLib.h>
+	#include <IOKit/hid/IOHIDDevice.h>
 	typedef IOHIDDeviceRef HANDLE;
 	typedef long DWORD;
 	#define INVALID_HANDLE_VALUE NULL
