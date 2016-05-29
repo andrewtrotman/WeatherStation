@@ -286,7 +286,11 @@ delete fixed_block;
 	if (found)
 		{
 		if (IOHIDDeviceOpen(hDevice, kIOHIDOptionsTypeSeizeDevice) == kIOReturnSuccess)
+			{
 			hid_init(hDevice);
+			if (read_fixed_block() == NULL)
+				return 3;	// cannot read the fixed block.
+			}
 
 		return 0;
 		}
