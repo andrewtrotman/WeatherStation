@@ -18,6 +18,7 @@
 	#include <hidpi.h>
 	#include <SetupAPI.h>
 	}
+#elif defined (__APPLE__)
 #else
 	#include <linux/hidraw.h>
 	#include <sys/ioctl.h>
@@ -89,6 +90,10 @@ if (hDevice != INVALID_HANDLE_VALUE)
 	{
 	#ifdef _MSC_VER
 		CloseHandle(hDevice);
+	#elif defined (__APPLE__)
+		/*
+			FIX: Close the connection on the Mac
+		*/
 	#else
 		flock(hDevice, LOCK_UN);
 		close(hDevice);
@@ -186,6 +191,120 @@ delete fixed_block;
 		return 2;	// puts("Cannot find an attached weather station");
 		}
 	}
+#elif defined (__APPLE__)
+	/*
+		USB_WEATHER::CONNECT()
+		----------------------
+		Return an error code (or 0 for success)
+	*/
+	uint32_t usb_weather::connect(uint32_t vid, uint32_t pid)
+	{
+	IOHIDManagerRef hid_manager;
+	char string_buffer[1024];
+	CFIndex number_of_devices;
+	CFSetRef device_set;
+	const IOHIDDeviceRef *device_array;
+	const IOHIDDeviceRef *current;
+	CFNumberRef vendor, product;
+	long vendor_id, product_id;
+	CFStringRef manufacturer, product_name;
+	int found = false;
+
+	hDevice = INVALID_HANDLE_VALUE;
+
+	/*
+		Get a handle to the HID manager
+	*/
+	hid_manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+
+	/*
+		Enumerate all HID devices and count how many we have.
+	*/
+	IOHIDManagerSetDeviceMatching(hid_manager, NULL);
+	IOHIDManagerOpen(hid_manager, kIOHIDOptionsTypeNone);
+	device_set = IOHIDManagerCopyDevices(hid_manager);
+	number_of_devices = device_set == NULL ? 0 : CFSetGetCount(device_set);
+
+	/*
+		Tell the user how many we found
+	*/
+	if (number_of_devices == 0)
+		{
+puts("NO HID DEVICE ON MAC");
+		return 1;		// puts("There are no HID devices attached - can't connect to weather station");
+		}
+	else
+		{
+		/*
+			Get the list into a C++ array
+		*/
+		device_array = new IOHIDDeviceRef [number_of_devices];
+		CFSetGetValues(device_set, (const void **)device_array);
+
+		/*
+			Iterate the device list
+		*/
+		for (current = device_array; current < device_array + number_of_devices; current++)
+			{
+			vendor_id = product_id = 0;
+
+			/*
+				Get the vendor ID (which is a 32-bit integer)
+			*/
+			if ((vendor = (CFNumberRef)IOHIDDeviceGetProperty(*current, CFSTR(kIOHIDVendorIDKey))) != NULL)
+				CFNumberGetValue(vendor, kCFNumberSInt32Type, &vendor_id);
+
+			/*
+				Get the product ID (which is a 32-bit integer)
+			*/
+			if ((product = (CFNumberRef)IOHIDDeviceGetProperty(*current, CFSTR(kIOHIDProductIDKey))) != NULL)
+				CFNumberGetValue((CFNumberRef)product, kCFNumberSInt32Type, &product_id);
+
+			/*
+				See if this is the device we're looking for
+			*/
+			if (vendor_id == vid && product_id == pid)
+				{
+puts("FOUND WEATHER STATION ON MAC");
+				found = true;
+				hDevice = *current;
+				}
+			}
+
+		/*
+			We're finished with the device set and device list so free them.
+		*/
+		CFRelease(device_set);
+		delete [] device_array;
+		}
+
+	if (found)
+		return 0;
+	else
+		{
+puts("NOT FOUND WEATHER STATION ON MAC");
+		return 2;	// puts("Cannot find an attached weather station");
+		}
+	}
+
+	/*
+		READFILE()
+		----------
+	*/
+	long ReadFile(HANDLE hDevice, void *buffer, DWORD bytes_to_read, DWORD *bytes_read, void *ignore)
+	{
+	return false;
+	}
+
+	/*
+		HIDD_SETOUTPUTREPORT()
+		----------------------
+	*/
+	long HidD_SetOutputReport(HANDLE hDevice, void *message, DWORD message_length)
+	{
+	return 0;
+	}
+
 #else
 	/*
 		Linux versions of the USB methods

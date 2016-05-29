@@ -391,10 +391,12 @@ if (!readings->lost_communications)
 	printf("<tr><td align=center class=\"large\">%s</td></tr>", weather_math::wind_force_name(readings->average_windspeed));
 
 	if (two_dp(readings->average_windspeed) != 0.00 || two_dp(readings->gust_windspeed) != 0.00)
+		{
 		if (two_dp(readings->average_windspeed) != 0.00)
 			printf("<tr><td align=center class=\"medium\">%0.2fKn gusts to %0.2fKn</td></tr>", weather_math::knots(readings->average_windspeed), weather_math::knots(readings->gust_windspeed));
 		else
 			printf("<tr><td align=center class=\"medium\">Gusts to %0.2fKn</td></tr>", weather_math::knots(readings->gust_windspeed));
+		}
 
 	/*
 		Outdoor temperature, humidity, rainfall
@@ -436,7 +438,7 @@ barometric_delta = (sealevel_pressure - weather_math::pressure_to_sea_level_pres
 z_number = weather_math::zambretti_pywws(sealevel_pressure, month, wind_direction, barometric_delta, false);
 
 printf("<tr><td align=center><span class=halfspace>&nbsp;</span></td></tr>");
-printf("<tr><td align=center><table><tr><td valign=middle><span class=\"megahuge\"><div style=\"position:relative;display:table-cell;vertical-align:middle;text-align:center;\">&#%d;</div></span></td>", z_to_font[z_number]);
+printf("<tr><td align=center><table><tr><td valign=middle><span class=\"megahuge\"><div style=\"position:relative;display:table-cell;vertical-align:middle;text-align:center;\">&#%ld;</div></span></td>", z_to_font[z_number]);
 printf("<td valign=middle><span class=\"large\"><div style=\"position:relative;display:table-cell;vertical-align:middle;text-align:center;\"> %s</div></span></td></tr></table></td></tr>", weather_math::zambretti_name(z_number));
 
 int trend = weather_math::pressure_trend(deltas->absolute_pressure);
@@ -506,14 +508,14 @@ for (current = 0; current < elements; current++)
 			{
 			hours = when / 60;
 			mins = when % 60;
-			printf("data.addRow([[%d, %d, 0, 0], %0.2f, null]);\n", hours, mins, data[current]);
+			printf("data.addRow([[%ld, %ld, 0, 0], %0.2f, null]);\n", hours, mins, data[current]);
 			}
 		}
 	else
 		{
 		hours = when / 60;
 		mins = when % 60;
-		printf("data.addRow([[%d, %d, 0, 0], null, %0.2f]);\n", hours, mins, data[current]);
+		printf("data.addRow([[%ld, %ld, 0, 0], null, %0.2f]);\n", hours, mins, data[current]);
 		}
 	}
 
@@ -524,7 +526,7 @@ printf("var options =\n");
 printf("	{\n");
 printf("	title: '%s',\n", title);
 printf("	fontName:\"euphemiaucas\",");
-printf("	hAxis: {baselineColor:'white', textStyle: {fontSize: 29, color:'white'}, gridlines: {color:'white'}},\n", x_title);
+printf("	hAxis: {baselineColor:'white', textStyle: {fontSize: 29, color:'white'}, gridlines: {color:'white'}},\n");
 printf("	vAxis: {baselineColor:'white', title: '%s', titleTextStyle: {fontSize: 45, italic:false, color:'white'}, textStyle: {fontSize: 29, color:'white'}, gridlines:{color:'white'}},\n", y_title);
 printf("	titleTextStyle: {fontSize:50, bold:false},\n");
 printf("	lineWidth: 3,\n");
@@ -533,7 +535,7 @@ if (msie)
 	printf("	backgroundColor: {fill:'DarkBlue'},\n");
 else
 	printf("	backgroundColor: {fill:'transparent'},\n");
-printf("	chartArea: {top:14, height:'90%'},");
+printf("	chartArea: {top:14, height:'90%%'},");
 printf("	series: {0:{color: 'white', pointSize:1}, 1:{color: 'white', pointSize:8}}");
 printf("	};\n");
 printf("var chart = new google.visualization.ScatterChart(document.getElementById('chart_div_%s'));\n", name);
@@ -605,10 +607,10 @@ for (current = 0; current < readings; current++)
 		hours = when / 60;
 		mins = when % 60;
 
-		if (abs(search_mins - (hours * 60 + mins)) < search_best_mins)
+		if (abs((int)(search_mins - (hours * 60 + mins))) < search_best_mins)
 			{
 			*answer = *history[current];
-			search_best_mins = abs(search_mins - (hours * 60 + mins));
+			search_best_mins = abs((int)(search_mins - (hours * 60 + mins)));
 			found = true;
 			}
 		else
@@ -789,6 +791,7 @@ puts("Content-type: text/html\n");
 if ((code = station.connect(USB_WEATHER_VID, USB_WEATHER_PID)) == 0)
 	{
 	if ((query_string = getenv("QUERY_STRING")) != NULL)
+		{
 		if (strstr(query_string, "temperature") != NULL)
 			return render_historic_readings_iphone(&station, OUTSIDE_TEMPERATURE);
 		else if (strstr(query_string, "wind") != NULL)
@@ -799,7 +802,8 @@ if ((code = station.connect(USB_WEATHER_VID, USB_WEATHER_PID)) == 0)
 			return render_historic_readings_iphone(&station, OUTSIDE_HUMIDITY);
 		else if (strstr(query_string, "pressure") != NULL)
 			return render_historic_readings_iphone(&station, PRESSURE);
-
+		}
+		
 	render_current_readings_iphone(&station);
 	}
 else
