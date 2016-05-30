@@ -9,6 +9,8 @@
 #include <stddef.h>
 #include <string.h>
 #include <math.h>
+#include <iomanip>
+#include <sstream>
 
 #include "usb_weather_cache.h"
 #include "usb_weather_datetime.h"
@@ -48,6 +50,146 @@ long get_readings_at_time(usb_weather *station, usb_weather_reading *answer, lon
 double two_dp(double value)
 {
 return ((long long)(value * 100.0)) / 100.0;
+}
+
+/*
+	RENDER_CURRENT_READINGS_JSON()
+	------------------------------
+*/
+usb_weather_reading *render_current_readings_json(usb_weather *station)
+{
+static long z_to_font[] = {49, 49, 49, 65, 72, 65, 72, 76, 76, 72, 78, 86, 86, 84, 80, 76, 109, 71, 71, 83, 87, 80, 85, 81, 83, 81, 122};
+usb_weather_reading *readings;
+uint8_t year, month, day, hour, minute;
+int sun_hour, sun_minute;
+int daylight_savings, barometric_state;
+long z_number;
+usb_weather_fixed_block_1080 *fixed_block;
+usb_weather_reading *deltas, *long_deltas, highs, lows, *got_high_low;
+double wind_direction, barometric_delta, dew_point;
+char *msie;
+double minimum_grass_temp;
+usb_weather_reading three_pm;
+std::ostringstream json;
+
+if ((readings = station->read_current_readings()) == NULL)
+	exit(printf("{\"error\":\"Cannot read current readings\"}"));
+
+json << std::setprecision(2) << std::fixed;
+json << "{\n";
+
+long_deltas = station->read_hourly_delta();				// "near-hour" deltas
+deltas = station->interpolate_hourly_delta(long_deltas);	// interpolate "near-hour" deltas into hourly deltas
+got_high_low = station->read_highs_and_lows(&highs, &lows);
+
+fixed_block = station->read_fixed_block();
+
+daylight_savings = weather_math::is_daylight_saving();
+fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
+weather_math::sunrise(&sun_hour, &sun_minute, year + 2000, month, day, latitude, longitude, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
+json << "\"sunrise\":" << '"' << std::setfill('0') << std::setw(2) << sun_hour << ':' << std::setfill('0') << std::setw(2) << sun_minute << "\",\n";
+
+weather_math::sunset(&sun_hour, &sun_minute, year + 2000, month, day, latitude, longitude, usb_weather_datetime::bcd_to_int(fixed_block->timezone), daylight_savings);
+json << "\"sunset\":" << '"' << std::setfill('0') << std::setw(2) << sun_hour << ':' << std::setfill('0') << std::setw(2) << sun_minute << "\",\n";
+
+if (got_high_low)
+	{
+	json << "\"temperaturetwentyfourhourlow\":" << (int)round(lows.outdoor_temperature) << ",\n";
+	json << "\"temperaturetwentyfourhourhourhigh\":" << (int)round(highs.outdoor_temperature) << ",\n";
+	}
+
+uint8_t moon_phase = (weather_math::phase_of_moon(2000 + year, month, day) / 30.0) * 26.0;
+json << "\"moonphase\":" << ((moon_phase + 13) % 26) << ",\n";	// the phase was half out!
+
+/*
+	Whats the time now? 
+*/
+json << "\"now\":" << '"' << fixed_block->current_time << "\",\n";
+
+
+if (!readings->lost_communications)
+	{
+	/*
+		Wind
+	*/
+	json << "\"winddirection\":" << '"' << weather_math::wind_direction_name(readings->wind_direction) << "\",\n";
+	json << "\"windbeaufort\":\"" << weather_math::wind_force_name(readings->average_windspeed) << "\",\n";
+
+	json << "\"windspeed\":" << weather_math::knots(readings->average_windspeed) << ",\n";
+	json << "\"windgusts\":" << weather_math::knots(readings->gust_windspeed) << ",\n";
+
+	/*
+		Outdoor temperature, humidity, rainfall
+	*/
+	double apparent_temperature = weather_math::apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
+	//double australian_apparent_temperature = weather_math::australian_apparent_temperature(readings->outdoor_temperature, readings->outdoor_humidity, readings->average_windspeed);
+
+	json << "\"temperaturedelta\":" << (deltas->outdoor_temperature > 0 ? "\"up\"" : deltas->outdoor_temperature < 0 ? "\"down\"" : "\"constant\"") << ",\n";
+	json << "\"temperature\":" << readings->outdoor_temperature << ",\n";
+	json << "\"temperatureapparent\":" << (int)floor(apparent_temperature) << ",\n";
+	json << "\"humidity\":" << readings->outdoor_humidity << ",\n";
+
+	if (deltas->rain_counter_overflow)
+		json << "\"rainhourly\":" << "\"full\",\n";
+	else
+		json << "\"rainhourly\":" << deltas->total_rain << ",\n";
+
+	if (got_high_low)
+		json << "\"raintwentyfourhour\":" << (highs.total_rain - lows.total_rain) << ",\n";
+	}
+
+/*
+	Pressure and Prediction
+*/
+if (readings->lost_communications)
+	wind_direction = weather_math::NO_WIND;
+else
+	wind_direction = (readings->average_windspeed < 0.3) ? weather_math::NO_WIND : readings->wind_direction / 22.5;
+double sealevel_pressure = weather_math::pressure_to_sea_level_pressure(readings->absolute_pressure, readings->outdoor_temperature, height_above_sea_level_in_m);
+
+barometric_delta = (sealevel_pressure - weather_math::pressure_to_sea_level_pressure(readings->absolute_pressure + deltas->absolute_pressure, readings->outdoor_temperature, height_above_sea_level_in_m)) / 3.0;
+
+z_number = weather_math::zambretti_pywws(sealevel_pressure, month, wind_direction, barometric_delta, false);
+
+json << "\"forcastzambrettinumber\":" << z_number << ",\n";
+json << "\"forcastzambrettiname\":\"" << weather_math::zambretti_name(z_number) << "\",\n";
+
+int trend = weather_math::pressure_trend(deltas->absolute_pressure);
+json << "\"pressuredelta\":" << (trend > 0 ? "\"up\"" : "\"down\"") << ",\n";
+json << "\"pressuresealevel\":" << sealevel_pressure << ",\n";
+
+/*
+	Inside temperature and humidity
+*/
+
+if (!readings->lost_communications)
+	{
+	dew_point = weather_math::dewpoint(readings->outdoor_temperature, readings->outdoor_humidity);
+	json << "\"dewpoint\":" << (int)dew_point << ",\n";
+	}
+json << "\"temperatureinside\":" << (int)readings->indoor_temperature << ",\n";
+json << "\"humidityinside\":" << (int)readings->indoor_humidity << ",\n";
+
+/*
+	Compute the ground temperature and warn of frost if likely
+*/
+if (!readings->lost_communications)
+	if (get_readings_at_time(station, &three_pm, 15, 0))
+		{
+		minimum_grass_temp = weather_math::frozenpoint(three_pm.outdoor_temperature, weather_math::dewpoint(three_pm.outdoor_temperature, three_pm.outdoor_humidity), month);
+
+		json << "\"temperatureminimumgrass\":" << (int)minimum_grass_temp << ",\n";
+
+		//	the wind speed is < 5 kt from E or NE (wind off the sea) or < 7 kt from any other direction.
+		if (minimum_grass_temp < 0 && ((readings->average_windspeed < 7.0) || (readings->average_windspeed < 5 && (readings->wind_direction < 67.5))))
+			json << "\"weatherwarnings\":\"Frost Likely\",\n";
+
+		}
+json << "\"error\":\"none\"\n";
+json << "}\n";
+
+std::cout << json.str();
+return readings;
 }
 
 /*
@@ -786,12 +928,18 @@ usb_weather_reading **historic = NULL;
 char *query_string;
 long code;
 
-puts("Content-type: text/html\n");
-
 if ((code = station.connect(USB_WEATHER_VID, USB_WEATHER_PID)) == 0)
 	{
 	if ((query_string = getenv("QUERY_STRING")) != NULL)
 		{
+		if (strstr(query_string, "JSON"))
+			{
+			puts("Content-type: application/json; charset=utf-8\n");
+			render_current_readings_json(&station);
+			return 0;
+			}
+			
+		puts("Content-type: text/html\n");
 		if (strstr(query_string, "temperature") != NULL)
 			return render_historic_readings_iphone(&station, OUTSIDE_TEMPERATURE);
 		else if (strstr(query_string, "wind") != NULL)
@@ -808,6 +956,8 @@ if ((code = station.connect(USB_WEATHER_VID, USB_WEATHER_PID)) == 0)
 	}
 else
 	{
+	puts("Content-type: text/html\n");
+	
 	render_html_head_iphone(NULL, NONE);
 	puts("<body background=/background.jpg>");
 	switch (code)

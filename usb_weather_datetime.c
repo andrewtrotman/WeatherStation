@@ -20,7 +20,7 @@ return ((bcd >> 4) * 10) + (bcd & 0x0F);
 	USB_WEATHER_DATETIME::EXTRACT()
 	-------------------------------
 */
-void usb_weather_datetime::extract(uint8_t *year, uint8_t *month, uint8_t *day, uint8_t *hour, uint8_t *minute)
+void usb_weather_datetime::extract(uint8_t *year, uint8_t *month, uint8_t *day, uint8_t *hour, uint8_t *minute) const
 {
 *year = bcd_to_int(this->year);
 *month = bcd_to_int(this->month);
