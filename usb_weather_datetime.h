@@ -8,6 +8,7 @@
 #define USB_WEATHER_DATETIME_H_
 
 #include <iostream>
+#include <iomanip>
 #include "fundamental_types.h"
 
 /*
@@ -41,7 +42,7 @@ uint8_t year, month, day, hour, minute;
 
 object.extract(&year, &month, &day, &hour, &minute);
 
-stream << (int)hour << ':' << (int)minute << " on " << (int)day << "/" << (int)month << "/20" << (int)year;
+stream << std::setfill('0') << std::setw(2) << (int)hour << ':' << std::setfill('0') << std::setw(2) << (int)minute << " on " << (int)day << "/" << (int)month << "/20" << (int)year;
 
 return stream;
 }
