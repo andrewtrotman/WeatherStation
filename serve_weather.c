@@ -916,6 +916,60 @@ if ((what_to_render & WINDGUST) != 0)
 return history;
 }
 
+
+
+/*
+	RENDER_HISTORIC_READINGS_JSON()
+	-------------------------------
+*/
+void render_historic_readings_json(usb_weather *station)
+{
+long sum;
+long *timeline;
+double *data;
+usb_weather_reading **history;
+long current, bucket;
+uint32_t readings;
+usb_weather_fixed_block_1080 *fixed_block;
+uint8_t year, month, day, hour, minute;
+long mins_since_midnight, readings_wanted;
+double initial_rain;
+
+fixed_block = station->read_fixed_block();
+fixed_block->current_time.extract(&year, &month, &day, &hour, &minute);
+mins_since_midnight = hour * 60 + minute;
+
+readings_wanted = (mins_since_midnight + (60 * 24)) / fixed_block->read_period;
+
+if ((history = station->read_all_readings(&readings, readings_wanted)) == NULL)
+	printf("{\"error\":\"Cannot read historic readings\"}");
+else
+	{
+	printf("{\n");
+	printf("\"sample\":[\n");
+	uint32_t age = 0;
+	for (current = readings - 1; current >= 0; current--)
+		if (!history[current]->lost_communications)
+			{
+			printf("{\n");
+			printf("\"age\":%d,\n", age);		// in minutes
+			age += history[current]->delay;	// delay in minutes to the *next* reading
+			printf("\"humidity\":%.2f,\n", history[current]->outdoor_humidity);
+			printf("\"temperature\":%.2f,\n", history[current]->outdoor_temperature);
+			printf("\"pressuresealevel\":%.2f,\n", history[current]->absolute_pressure);
+			printf("\"windspeed\":%.2f,\n", weather_math::knots(history[current]->average_windspeed));
+			printf("\"windgusts\":%.2f,\n", weather_math::knots(history[current]->gust_windspeed));
+			printf("\"raintotal\":%.2f\n", history[current]->total_rain);
+			if (current != 0)
+				printf("},\n");
+			else
+				printf("}\n");
+			}
+	printf("]\n");
+	printf("}\n");
+	}
+}
+
 /*
 	MAIN()
 	------
@@ -935,10 +989,13 @@ if ((code = station.connect(USB_WEATHER_VID, USB_WEATHER_PID)) == 0)
 		if (strstr(query_string, "JSON"))
 			{
 			puts("Content-type: application/json; charset=utf-8\n");
-			render_current_readings_json(&station);
+			if (strstr(query_string, "historic"))
+				render_historic_readings_json(&station);
+			else
+				render_current_readings_json(&station);
 			return 0;
 			}
-			
+
 		puts("Content-type: text/html\n");
 		if (strstr(query_string, "temperature") != NULL)
 			return render_historic_readings_iphone(&station, OUTSIDE_TEMPERATURE);
