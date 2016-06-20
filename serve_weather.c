@@ -965,7 +965,8 @@ else
 			else
 				printf("}\n");
 			}
-	printf("]\n");
+	printf("],\n");
+	printf("\"error\":\"none\"");
 	printf("}\n");
 	}
 }
