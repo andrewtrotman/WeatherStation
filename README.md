@@ -7,7 +7,7 @@ get a lovely disply of the data from the weather station.
 How to build and install
 1.  Install Apache 2
 
-2.  hg clone https://andrewtrotman@bitbucket.org/andrewtrotman/weatherstation
+2.  git clone https://andrewtrotman@bitbucket.org/andrewtrotman/weatherstation.git
 
 3.  make
 
